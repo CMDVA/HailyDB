@@ -1,0 +1,152 @@
+# =====================
+# HailyDB | NWS Alert Ingestion Service PRD
+# Lead Engineer Directive: Do Not Deviate
+# =====================
+
+# ---------------------------------
+# 🧩 1. ENVIRONMENT & STRUCTURE SETUP
+# ---------------------------------
+# Project should follow this structure:
+#
+# /app
+#   ├── main.py              # Entrypoint (Flask)
+#   ├── ingest.py            # NWS polling + ingestion
+#   ├── db.py                # SQLAlchemy setup
+#   ├── models.py            # Alert model (PostgreSQL schema)
+#   ├── enrich.py            # AI summarization + tag classification
+#   └── config.py            # Config vars for polling URL, API headers
+# /scripts
+#   └── backfill.py          # Future: archive loader
+# /admin
+#   └── dashboard.py         # Optional: Admin dashboard
+# requirements.txt
+# replit.nix (if needed)
+
+
+# ---------------------------------
+# 🏗️ 2. DB: POSTGRESQL SCHEMA
+# ---------------------------------
+# This will be managed by SQLAlchemy. Must support full NWS alert payload + enrichments.
+
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import Column, String, Text, DateTime, Enum, Boolean, func
+from app.db import Base
+
+class Alert(Base):
+    __tablename__ = "alerts"
+
+    id = Column(String, primary_key=True)  # Same as properties.id from NWS
+    event = Column(String, index=True)
+    severity = Column(String, index=True)
+    area_desc = Column(Text)
+    effective = Column(DateTime)
+    expires = Column(DateTime)
+    sent = Column(DateTime)
+    geometry = Column(JSONB)   # Store full geometry block
+    properties = Column(JSONB) # Store all original NWS fields
+    raw = Column(JSONB)        # Entire feature
+
+    # Enrichment Fields
+    ai_summary = Column(Text)
+    ai_tags = Column(JSONB)    # List of tags derived from NWS 'event' field. Reference categories include: "Tornado Warning", "Severe Thunderstorm Warning", "Flood Warning", "Hurricane Watch", "Fire Weather Watch", "Winter Weather Advisory", "Air Quality Alert", etc. See: https://www.weather.gov/documentation/services-web-api#/default/get_alerts
+    spc_verified = Column(Boolean, default=False)
+    spc_reports = Column(JSONB)  # List of matching SPC reports (ids or descriptions)
+
+    ingested_at = Column(DateTime, server_default=func.now())
+
+
+# ---------------------------------
+# ⏲️ 3. INGESTOR: NWS POLLING (app/ingest.py)
+# ---------------------------------
+# This will:
+#  - Poll https://api.weather.gov/alerts/active?area=FL
+#  - Traverse pagination (follow AlertCollection.pagination.next)
+#  - Deduplicate based on alert ID
+#  - Store into Postgres
+#  - Log ingestion count, duration, and last success timestamp
+#
+# The scheduler MUST run automatically every 5 minutes using APScheduler.
+#
+# Example Logic (main.py):
+# from apscheduler.schedulers.background import BackgroundScheduler
+# scheduler = BackgroundScheduler()
+# scheduler.add_job(poll_nws_alerts, 'interval', minutes=5)
+# scheduler.start()
+
+# Core Logic:
+# def poll_nws_alerts():
+#     url = NWS_ALERT_URL
+#     while url:
+#         r = requests.get(url, headers=HEADERS)
+#         json_data = r.json()
+#         for feature in json_data["features"]:
+#             if not Alert.query.get(feature["properties"]["id"]):
+#                 db.session.add(Alert(...))
+#         db.session.commit()
+#         url = json_data.get("pagination", {}).get("next")
+
+
+# ---------------------------------
+# 🤖 4. ENRICHMENT (app/enrich.py)
+# ---------------------------------
+# AI Summary: Use OpenAI call with safety guardrails
+
+# def enrich_alert(alert):
+#     alert.ai_summary = openai_summarize(alert.properties["description"])
+#     alert.ai_tags = classify_tags(alert.properties)
+#     db.session.commit()
+
+
+# ---------------------------------
+# 🧪 5. API SERVICE (app/main.py)
+# ---------------------------------
+# Flask App with the following routes:
+#  - GET /alerts                → Returns recent alerts
+#  - GET /alerts/<id>          → Returns single enriched alert
+#  - GET /alerts/summary       → Most recent summaries
+#  - POST /alerts/enrich/<id>  → Re-run enrichment manually
+#  - GET /internal/status      → Returns health status, last poll timestamp, and last ingestion count
+#  - GET /internal/dashboard   → Admin dashboard: alert counts, SPC match stats, cron settings status, query test panel
+#  - POST /internal/cron       → Enable/disable polling, update interval
+#  - POST /internal/validate   → Run JSONSchema validation across stored alerts
+#  - GET /internal/metrics     → Count of alerts, tags, active
+
+
+# ---------------------------------
+# 🧼 6. BEST PRACTICES
+# ---------------------------------
+# - DO NOT delete alerts
+# - Only update alerts on overwrite from NWS (id match)
+# - Always log ingestion time, even if alert already exists
+# - Alerts should be JSON-validatable against NWS schemas (https://api.weather.gov/openapi.json)
+# - AI enrichment must NOT overwrite original text fields
+# - Unit test enrich.py logic separately
+# - Use APScheduler to automate poll_nws_alerts() every 5 min — no manual fetch dependency
+# - Maintain ingestion logs (new alerts count, duration, and success status)
+# - Add /internal/status for operational monitoring
+# - Use try/except and alert skipping logic (log IDs skipped)
+# - ⚠️ Do not persist Open-Meteo or other predictive data in the permanent historical record
+# - Add SPC cross-referencing to confirm alerts against observed reports
+# - Admin dashboard must expose key controls: ingestion toggle, record counts, API test payloads
+# - Use Google Analytics-style design or a common open-source admin panel for dashboard UI
+
+
+# ---------------------------------
+# 🚧 7. NEXT MILESTONES
+# ---------------------------------
+# [ ] Implement /test route with hard-coded response
+# [ ] Scaffold models + DB init
+# [ ] Write ingestor polling for FL alerts
+# [ ] Add enrichment logic (summary + tags only)
+# [ ] Deploy Flask server in Replit with test endpoint
+# [ ] Create /alerts GET API
+# [ ] Validate structure against NWS Alert schema
+# [ ] Begin ingesting live data
+# [ ] Add summary endpoint + AI summaries
+# [ ] Add internal dashboard + health endpoint
+# [ ] Add APScheduler polling every 5 min
+# [ ] Expose /internal/status with ingestion timestamps and counts
+# [ ] Ingest SPC storm reports daily into standalone table
+# [ ] Run SPC cross-matching and attach results to alerts
+# [ ] Build cron scheduler control + toggle via dashboard
+# [ ] Add schema validator endpoint to test alert record integrity
