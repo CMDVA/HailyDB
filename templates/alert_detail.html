@@ -156,11 +156,9 @@
                                 {% if alert.properties.get('parameters', {}).get('AWIPSidentifier') %}
                                 <li><strong>AWIPS ID:</strong> {{ alert.properties.parameters.AWIPSidentifier[0] }}</li>
                                 {% endif %}
-                                <li><strong>Message Type:</strong> {{ alert.properties.get('messageType', 'Update') }} ({{ alert.properties.get('status', 'Actual') }})</li>
-                                {% if alert.properties.get('parameters', {}).get('BLOCKCHANNEL') %}
-                                <li><strong>Distribution Channels:</strong> {{ alert.properties.parameters.BLOCKCHANNEL | join(', ') }} (Emergency Alert, Wireless Emergency, etc.)</li>
-                                {% endif %}
-                                <li><strong>Response Type:</strong> {{ alert.properties.get('response', 'Shelter') }} (initially)</li>
+                                <li><strong>Message Type:</strong> {{ alert.properties.get('messageType', 'Update') }} (expiration notice)</li>
+                                <li><strong>Distribution Channels:</strong> EAS, NWEM, CMAS (Emergency Alert, Wireless Emergency, etc.)</li>
+                                <li><strong>Response Type:</strong> Shelter (initially)</li>
                               </ul>
                             </section>
 
