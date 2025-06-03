@@ -98,8 +98,18 @@ async function loadTodaysAlerts() {
             let html = `<div class="mb-2"><strong>${todaysAlerts.length} alerts ingested today</strong></div>`;
             html += '<div class="row text-center mb-2">';
             
-            // Show top alert types (prioritize weather events)
-            const priorityTypes = ['Tornado Warning', 'Tornado Watch', 'Severe Thunderstorm Warning', 'Severe Thunderstorm Watch', 'Flash Flood Warning', 'Flood Warning'];
+            // Show top alert types (prioritize important weather events)
+            const priorityTypes = [
+                'Flash Flood Warning',
+                'Flood Advisory', 
+                'Flood Warning',
+                'Flood Watch',
+                'Severe Thunderstorm Warning',
+                'Severe Thunderstorm Watch',
+                'Special Weather Statement',
+                'Storm Warning',
+                'Wind Advisory'
+            ];
             const sortedTypes = Object.entries(alertsByType)
                 .sort((a, b) => {
                     // Prioritize important weather events
