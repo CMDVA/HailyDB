@@ -71,11 +71,11 @@ with app.app_context():
     enrich_service = EnrichmentService(db)
     spc_ingest_service = SPCIngestService(db.session)
     spc_matching_service = SPCMatchingService(db.session)
-    scheduler_service = SchedulerService(db.session)
+    scheduler_service = SchedulerService(db)
     
     # Initialize autonomous scheduler
     from autonomous_scheduler import AutonomousScheduler
-    autonomous_scheduler = AutonomousScheduler(db.session)
+    autonomous_scheduler = AutonomousScheduler(db)
 
 # API Routes
 @app.route('/alerts')

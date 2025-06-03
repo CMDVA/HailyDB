@@ -16,8 +16,8 @@ class SchedulerService:
     Maintains audit trail for autonomous system monitoring
     """
     
-    def __init__(self, db_session):
-        self.db = db_session
+    def __init__(self, db):
+        self.db = db
     
     def log_operation_start(self, operation_type: str, trigger_method: str = "manual", 
                           metadata: Optional[Dict] = None) -> SchedulerLog:

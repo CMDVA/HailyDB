@@ -24,12 +24,12 @@ class AutonomousScheduler:
     Prevents overlapping operations and provides self-diagnosis
     """
     
-    def __init__(self, db_session):
-        self.db = db_session
-        self.ingest_service = IngestService(db_session)
-        self.spc_service = SPCIngestService(db_session)
-        self.matching_service = SPCMatchingService(db_session)
-        self.scheduler_service = SchedulerService(db_session)
+    def __init__(self, db):
+        self.db = db
+        self.ingest_service = IngestService(db)
+        self.spc_service = SPCIngestService(db.session)
+        self.matching_service = SPCMatchingService(db.session)
+        self.scheduler_service = SchedulerService(db)
         
         self.running = False
         self.thread = None
