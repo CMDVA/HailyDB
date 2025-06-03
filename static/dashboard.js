@@ -146,6 +146,9 @@ function updateStatusIndicator() {
                     }, 10000);
                 }
             }
+            
+            // Update SPC scheduler status (same as NWS since they run together)
+            updateSPCSchedulerStatus(scheduler);
         })
         .catch(error => {
             console.error('Error fetching scheduler status:', error);
@@ -155,6 +158,12 @@ function updateStatusIndicator() {
             }
             if (countdownDiv) countdownDiv.style.display = 'none';
             if (progressDiv) progressDiv.style.display = 'none';
+            
+            // Update SPC scheduler to unknown state
+            const spcStatusElement = document.getElementById('spc-scheduler-status');
+            if (spcStatusElement) {
+                spcStatusElement.innerHTML = '<i class="fas fa-exclamation-circle me-1"></i>Unknown';
+            }
         });
 }
 
@@ -468,6 +477,45 @@ function changePage(page) {
     
     // Update stored current page
     window.dashboardAlertsData.currentPage = page;
+}
+
+// SPC Scheduler Functions
+function onPlaySPCScheduler() {
+    // Since SPC ingestion is part of the autonomous scheduler, we just start the main scheduler
+    onPlayScheduler();
+}
+
+function onPauseSPCScheduler() {
+    // Since SPC ingestion is part of the autonomous scheduler, we just stop the main scheduler
+    onPauseScheduler();
+}
+
+// Update SPC scheduler status based on main scheduler status
+function updateSPCSchedulerStatus(status) {
+    const spcStatusElement = document.getElementById('spc-scheduler-status');
+    const spcPlayBtn = document.getElementById('spc-scheduler-play-btn');
+    const spcPauseBtn = document.getElementById('spc-scheduler-pause-btn');
+    const spcCountdownDiv = document.getElementById('spc-next-ingestion-countdown');
+    
+    if (!spcStatusElement) return;
+    
+    if (status.running) {
+        spcStatusElement.innerHTML = '<i class="fas fa-play-circle me-1 text-success"></i>Running';
+        spcPlayBtn.style.display = 'none';
+        spcPauseBtn.style.display = 'inline-block';
+        spcCountdownDiv.style.display = 'block';
+        
+        // Update SPC countdown timer (same as NWS since they run together)
+        const spcCountdownTimer = document.getElementById('spc-countdown-timer');
+        if (spcCountdownTimer && status.next_nws_poll) {
+            spcCountdownTimer.textContent = status.next_nws_poll;
+        }
+    } else {
+        spcStatusElement.innerHTML = '<i class="fas fa-stop-circle me-1"></i>Stopped';
+        spcPlayBtn.style.display = 'inline-block';
+        spcPauseBtn.style.display = 'none';
+        spcCountdownDiv.style.display = 'none';
+    }
 }
 
 // Load SPC verification data (initial load only)
