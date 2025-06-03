@@ -203,8 +203,10 @@ class SPCIngestService:
     
     def _is_header_line(self, line: str) -> bool:
         """Check if line is a section header"""
-        # Look for the distinctive column names that identify each section
-        return any(indicator in line for indicator in ['F_Scale', 'Speed', 'Size']) and 'Time' in line
+        # Look for Time header with section-specific columns
+        if not line.startswith('Time,'):
+            return False
+        return any(indicator in line for indicator in ['F_Scale', 'Speed', 'Size'])
     
     def _parse_header_line(self, line: str) -> Tuple[str, List[str]]:
         """Parse header line to determine section type and column names"""
