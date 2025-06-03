@@ -226,3 +226,24 @@ class SPCIngestionLog(db.Model):
 
     def __repr__(self):
         return f'<SPCIngestionLog {self.report_date}: {self.success}>'
+
+class SchedulerLog(db.Model):
+    """
+    Autonomous operation tracking for scheduler metadata
+    Logs all automated ingestion attempts regardless of trigger method
+    """
+    __tablename__ = "scheduler_logs"
+    
+    id = Column(db.Integer, primary_key=True)
+    operation_type = Column(String(50), nullable=False, index=True)  # 'nws_poll', 'spc_poll', 'spc_match'
+    trigger_method = Column(String(20), nullable=False)  # 'manual', 'external_cron', 'internal_timer'
+    started_at = Column(DateTime, server_default=func.now())
+    completed_at = Column(DateTime)
+    success = Column(Boolean, default=False)
+    records_processed = Column(db.Integer, default=0)
+    records_new = Column(db.Integer, default=0)
+    error_message = Column(Text)
+    operation_metadata = Column(JSONB)  # Operation-specific data
+    
+    def __repr__(self):
+        return f'<SchedulerLog {self.id}: {self.operation_type} - {self.success}>'
