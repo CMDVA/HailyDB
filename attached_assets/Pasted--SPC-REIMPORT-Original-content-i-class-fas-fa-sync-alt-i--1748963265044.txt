@@ -1,0 +1,101 @@
+[SPC REIMPORT] Original content: 
+                        <i class="fas fa-sync-alt"></i>
+                    
+[SPC REIMPORT] Button set to loading state
+[SPC REIMPORT] Making POST request to: /internal/spc-reupload/2025-06-02
+[SPC REIMPORT] Response status: 200
+[SPC REIMPORT] Response headers: 
+Headers {append: ƒ, delete: ƒ, get: ƒ, getSetCookie: ƒ, has: ƒ, …}
+[SPC REIMPORT] Response body: 
+Object {date: "2025-06-02", message: "Re-uploaded SPC data for 2025-06-02 (replaced 0 existing reports)", reports_ingested: 0, reports_replaced: 0, success: true}
+[SPC REIMPORT] Success! Re-ingestion completed for 2025-06-02
+[SPC REIMPORT] Refreshing data for 2025-06-02 only...
+[SINGLE REFRESH] Updating verification data for 2025-06-02
+[SINGLE REFRESH] Fresh data for 2025-06-02: 
+Object {date_range: {…}, results: Array(1), summary: {…}}
+[SINGLE REFRESH] Updated row for 2025-06-02
+SPC verification table already exists - preserving existing data
+ NWS Alert Service
+Dashboard
+Alerts
+Summaries
+Status API
+ Loading...
+ Admin Dashboard
+Total Alerts
+393
+AI Enriched
+9
+2.3% enriched
+Recent (24h)
+393
+Total SPC Events
+643
+42 tornado, 407 wind, 194 hail
+Scheduler Status
+Stopped
+Today's Alerts
+26 alerts ingested today
+Category	Alert Type	Count
+Severe Weather Alert	Severe Thunderstorm Warning	15
+Flood Alert	Flood Advisory	1
+Flash Flood Warning	1
+Marine Alert	Small Craft Advisory	2
+Brisk Wind Advisory	2
+Marine Weather Statement	1
+Air Quality & Dust Alert	Dust Storm Warning	1
+General Weather Info	Special Weather Statement	2
+Test Message	1
+Date/Time	Severity	Type	Area	Actions
+6/3/2025, 12:13:00 AM	Severe	Severe Thunderstorm Warning	Plymouth, IA; Woodbury, IA; Dakota, NE; Dixon, NE;...	
+6/3/2025, 12:13:00 AM	Moderate	Special Weather Statement	Perkins; Chase	
+6/3/2025, 12:12:00 AM	Severe	Severe Thunderstorm Warning	Scotts Bluff, NE; Sioux, NE; Goshen, WY	
+6/3/2025, 12:12:00 AM	Severe	Severe Thunderstorm Warning	Barber, KS; Clark, KS; Comanche, KS; Edwards, KS; ...	
+6/3/2025, 12:11:35 AM	Unknown	Test Message	Montgomery	
+6/3/2025, 12:10:00 AM	Minor	Small Craft Advisory	Cape Thompson to Cape Beaufort out to 15 NM	
+6/3/2025, 12:10:00 AM	Minor	Brisk Wind Advisory	Cape Beaufort to Point Franklin from 15 to 85 NM	
+6/3/2025, 12:10:00 AM	Minor	Small Craft Advisory	Cape Thompson to Cape Beaufort from 15 to 85 NM	
+6/3/2025, 12:10:00 AM	Minor	Brisk Wind Advisory	Cape Beaufort to Point Franklin out to 15 NM	
+6/3/2025, 12:10:00 AM	Severe	Severe Thunderstorm Warning	Logan, KS; Wallace, KS	
+6/3/2025, 12:09:00 AM	Severe	Severe Thunderstorm Warning	Pecos, TX	
+6/3/2025, 12:08:00 AM	Severe	Dust Storm Warning	Kit Carson, CO; Sherman, KS; Thomas, KS	
+6/3/2025, 12:07:00 AM	Minor	Flood Advisory	Washington, UT	
+6/3/2025, 12:06:00 AM	Severe	Severe Thunderstorm Warning	O'Brien, IA; Sioux, IA	
+6/3/2025, 12:06:00 AM	Severe	Flash Flood Warning	Custer, NE	
+6/3/2025, 12:05:00 AM	Severe	Severe Thunderstorm Warning	Weld, CO	
+6/3/2025, 12:05:00 AM	Severe	Severe Thunderstorm Warning	Lynn, TX	
+6/3/2025, 12:05:00 AM	Severe	Severe Thunderstorm Warning	Logan, KS; Sherman, KS; Thomas, KS; Wallace, KS	
+6/3/2025, 12:03:00 AM	Minor	Marine Weather Statement	Sebastian Inlet to Jupiter Inlet 0-20 nm; Volusia-...	
+6/3/2025, 12:02:00 AM	Severe	Severe Thunderstorm Warning	Pecos, TX	
+6/3/2025, 12:02:00 AM	Severe	Severe Thunderstorm Warning	Beckham, OK; Custer, OK; Roger Mills, OK	
+6/3/2025, 12:01:00 AM	Severe	Severe Thunderstorm Warning	Logan, KS	
+6/3/2025, 12:00:00 AM	Severe	Severe Thunderstorm Warning	Woodbury, IA; Dakota, NE; Dixon, NE; Union, SD	
+6/3/2025, 12:00:00 AM	Moderate	Special Weather Statement	Renville; Sibley; Redwood; Brown; Nicollet	
+6/3/2025, 12:00:00 AM	Severe	Severe Thunderstorm Warning	Beckham, OK; Greer, OK; Kiowa, OK; Washita, OK	
+6/3/2025, 12:00:00 AM	Severe	Severe Thunderstorm Warning	Custer, NE	
+Today's SPC Events
+Date	HailyDB	SPC Live	Status	Action
+2025-06-03	0	0	MATCH	
+2025-06-02	0	120	MISMATCH	
+2025-06-01	42	42	MATCH	
+2025-05-31	30	30	MATCH	
+2025-05-30	131	131	MATCH	
+2025-05-29	82	82	MATCH	
+2025-05-28	53	53	MATCH	
+ Last verified: 3:07:10 PM
+System Status
+Ingestion Status
+Last Ingestion: 2025-06-03 00:14:52 UTC
+
+Polling Interval: 5 minutes
+
+Next Poll: Calculating...
+
+API Health
+NWS API: Operational
+Database: Connected
+OpenAI API: Available
+System Controls
+ HailyDB NWS Alert Ingestion Service
+
+ Last updated: Loading...

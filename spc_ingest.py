@@ -95,10 +95,13 @@ class SPCIngestService:
             
             # Download CSV
             response = requests.get(url, timeout=Config.REQUEST_TIMEOUT)
+            logger.info(f"Response status: {response.status_code}, headers: {dict(response.headers)}")
+            logger.info(f"Response encoding: {response.encoding}")
             response.raise_for_status()
             
             # Parse CSV content
             logger.info(f"CSV response length: {len(response.text)} characters")
+            logger.info(f"First 200 chars: {repr(response.text[:200])}")
             result = self._parse_spc_csv(response.text, report_date)
             
             # Check if we have more reports than before
