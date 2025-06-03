@@ -191,6 +191,7 @@ class AutonomousScheduler:
             logger.warning("SPC matching already in progress, skipping")
             return
         
+        log_entry = None
         try:
             log_entry = self.scheduler_service.log_operation_start(
                 "spc_match", "internal_timer"
@@ -209,9 +210,10 @@ class AutonomousScheduler:
             
         except Exception as e:
             logger.error(f"SPC matching failed: {e}")
-            self.scheduler_service.log_operation_complete(
-                log_entry, False, 0, 0, str(e)
-            )
+            if log_entry:
+                self.scheduler_service.log_operation_complete(
+                    log_entry, False, 0, 0, str(e)
+                )
         finally:
             self.matching_lock.release()
     

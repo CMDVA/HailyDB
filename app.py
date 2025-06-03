@@ -69,7 +69,13 @@ with app.app_context():
     # Initialize services
     ingest_service = IngestService(db)
     enrich_service = EnrichmentService(db)
-    scheduler_service = SchedulerService(db)
+    spc_ingest_service = SPCIngestService(db.session)
+    spc_matching_service = SPCMatchingService(db.session)
+    scheduler_service = SchedulerService(db.session)
+    
+    # Initialize autonomous scheduler
+    from autonomous_scheduler import AutonomousScheduler
+    autonomous_scheduler = AutonomousScheduler(db.session)
 
 # API Routes
 @app.route('/alerts')
@@ -719,6 +725,112 @@ def spc_reupload(date_str):
     except Exception as e:
         logger.error(f"Error re-uploading SPC data for {date_str}: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/internal/spc-ingest', methods=['POST'])
+def spc_ingest():
+    """Trigger SPC report ingestion"""
+    try:
+        log_entry = scheduler_service.log_operation_start("spc_poll", "manual")
+        
+        # Poll for last 7 days
+        from datetime import datetime, timedelta
+        total_reports = 0
+        end_date = datetime.utcnow().date()
+        start_date = end_date - timedelta(days=6)
+        
+        current_date = start_date
+        while current_date <= end_date:
+            result = spc_ingest_service.poll_spc_reports(current_date)
+            total_reports += result.get('total_reports', 0)
+            current_date += timedelta(days=1)
+        
+        scheduler_service.log_operation_complete(
+            log_entry, True, total_reports, total_reports
+        )
+        
+        return jsonify({
+            'success': True,
+            'total_reports': total_reports,
+            'message': f'SPC ingestion completed: {total_reports} reports processed'
+        })
+        
+    except Exception as e:
+        logger.error(f"SPC ingestion failed: {e}")
+        if 'log_entry' in locals():
+            scheduler_service.log_operation_complete(
+                log_entry, False, 0, 0, str(e)
+            )
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/internal/spc-match', methods=['POST'])
+def spc_match():
+    """Trigger SPC matching process"""
+    try:
+        log_entry = scheduler_service.log_operation_start("spc_match", "manual")
+        
+        result = spc_matching_service.match_spc_reports_batch(limit=100)
+        processed = result.get('processed', 0)
+        matched = result.get('matched', 0)
+        
+        scheduler_service.log_operation_complete(
+            log_entry, True, processed, matched
+        )
+        
+        return jsonify({
+            'success': True,
+            'processed': processed,
+            'matched': matched,
+            'message': f'SPC matching completed: {matched}/{processed} alerts matched'
+        })
+        
+    except Exception as e:
+        logger.error(f"SPC matching failed: {e}")
+        if 'log_entry' in locals():
+            scheduler_service.log_operation_complete(
+                log_entry, False, 0, 0, str(e)
+            )
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/internal/scheduler/start', methods=['POST'])
+def start_autonomous_scheduler():
+    """Start autonomous scheduler"""
+    try:
+        autonomous_scheduler.start()
+        return jsonify({
+            'success': True,
+            'status': 'running',
+            'message': 'Autonomous scheduler started'
+        })
+    except Exception as e:
+        logger.error(f"Failed to start autonomous scheduler: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/internal/scheduler/stop', methods=['POST'])
+def stop_autonomous_scheduler():
+    """Stop autonomous scheduler"""
+    try:
+        autonomous_scheduler.stop()
+        return jsonify({
+            'success': True,
+            'status': 'stopped',
+            'message': 'Autonomous scheduler stopped'
+        })
+    except Exception as e:
+        logger.error(f"Failed to stop autonomous scheduler: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/internal/scheduler/status')
+def get_autonomous_scheduler_status():
+    """Get autonomous scheduler status"""
+    try:
+        status = autonomous_scheduler.get_status()
+        return jsonify({
+            'success': True,
+            'scheduler': status
+        })
+    except Exception as e:
+        logger.error(f"Failed to get scheduler status: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/internal/spc-verify-today')
 def spc_verify_today():

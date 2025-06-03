@@ -50,18 +50,46 @@ function initializeDashboard() {
     }
 }
 
-// Update status indicators
+// Update status indicators and control buttons
 function updateStatusIndicator() {
     const statusElement = document.getElementById('scheduler-status');
-    if (statusElement && dashboardData.scheduler_running !== undefined) {
-        if (dashboardData.scheduler_running) {
-            statusElement.className = 'text-success';
-            statusElement.innerHTML = '<i class="fas fa-play-circle me-1"></i>Running';
-        } else {
-            statusElement.className = 'text-danger';
-            statusElement.innerHTML = '<i class="fas fa-stop-circle me-1"></i>Stopped';
-        }
-    }
+    const playButton = document.getElementById('scheduler-play-btn');
+    const pauseButton = document.getElementById('scheduler-pause-btn');
+    
+    // Get current scheduler status from server
+    fetch('/internal/scheduler/status')
+        .then(response => response.json())
+        .then(data => {
+            const isRunning = data.success && data.scheduler && data.scheduler.running;
+            
+            if (statusElement) {
+                if (isRunning) {
+                    statusElement.className = 'text-success';
+                    statusElement.innerHTML = '<i class="fas fa-play-circle me-1"></i>Running';
+                } else {
+                    statusElement.className = 'text-danger';
+                    statusElement.innerHTML = '<i class="fas fa-stop-circle me-1"></i>Stopped';
+                }
+            }
+            
+            // Update button visibility
+            if (playButton && pauseButton) {
+                if (isRunning) {
+                    playButton.style.display = 'none';
+                    pauseButton.style.display = 'inline-block';
+                } else {
+                    playButton.style.display = 'inline-block';
+                    pauseButton.style.display = 'none';
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching scheduler status:', error);
+            if (statusElement) {
+                statusElement.className = 'text-warning';
+                statusElement.innerHTML = '<i class="fas fa-exclamation-circle me-1"></i>Unknown';
+            }
+        });
 }
 
 // Calculate and display next poll time
