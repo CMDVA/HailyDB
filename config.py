@@ -4,7 +4,7 @@ class Config:
     """Configuration settings for NWS Alert Ingestion Service"""
     
     # NWS API Configuration
-    NWS_ALERT_URL = "https://api.weather.gov/alerts/active?area=FL"
+    NWS_ALERT_URL = "https://api.weather.gov/alerts/active"
     NWS_HEADERS = {
         'User-Agent': 'HailyDB-NWS-Ingestion/1.0 (contact@hailydb.com)',
         'Accept': 'application/geo+json'
