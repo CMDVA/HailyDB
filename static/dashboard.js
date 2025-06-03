@@ -464,9 +464,12 @@ function displayIntegrityResults(results, summary) {
 
 // Force re-ingestion for a specific date
 async function forceReingestion(date) {
-    if (!confirm(`Force re-ingestion for ${date}? This will re-download and process SPC data for this date.`)) {
-        return;
-    }
+    const button = event.target.closest('button');
+    const originalContent = button.innerHTML;
+    
+    // Show loading state
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    button.disabled = true;
     
     try {
         const response = await fetch(`/internal/spc-reupload/${date}`, {
@@ -479,15 +482,38 @@ async function forceReingestion(date) {
         const result = await response.json();
         
         if (result.success) {
-            showNotification(`Re-ingestion triggered for ${date}`, 'success');
-            // Refresh the SPC events data
-            loadTodaysSPCEvents();
+            // Show success temporarily
+            button.innerHTML = '<i class="fas fa-check text-success"></i>';
+            button.className = 'btn btn-sm btn-success';
+            
+            // Refresh the SPC events data after a short delay
+            setTimeout(() => {
+                loadTodaysSPCEvents();
+            }, 1000);
+            
         } else {
-            showNotification(`Error: ${result.message}`, 'error');
+            // Show error temporarily
+            button.innerHTML = '<i class="fas fa-times text-danger"></i>';
+            button.className = 'btn btn-sm btn-danger';
+            
+            setTimeout(() => {
+                button.innerHTML = originalContent;
+                button.className = 'btn btn-sm btn-outline-primary';
+                button.disabled = false;
+            }, 2000);
         }
     } catch (error) {
         console.error('Error triggering re-ingestion:', error);
-        showNotification('Error triggering re-ingestion', 'error');
+        
+        // Show error state
+        button.innerHTML = '<i class="fas fa-times text-danger"></i>';
+        button.className = 'btn btn-sm btn-danger';
+        
+        setTimeout(() => {
+            button.innerHTML = originalContent;
+            button.className = 'btn btn-sm btn-outline-primary';
+            button.disabled = false;
+        }, 2000);
     }
 }
 
