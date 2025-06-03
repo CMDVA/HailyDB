@@ -1,0 +1,65 @@
+✅ Data Retention Strategy:
+Answer: Full historical archive.
+Rationale: This is the backbone of HailyDB. Rolling windows undermine value for longitudinal insight and SPC correlation. Storage cost is negligible at our scale compared to its analytical utility.
+
+✅ Matching Tolerance (SPC <-> NWS):
+Geographic Radius:
+Answer: County FIPS match first, fallback to lat/lon with ±25mi radius.
+Rationale: County FIPS is structured and clean. Radius fallback accounts for polygon/point mismatches.
+
+Time Window:
+Answer: ±2 hours.
+Rationale: Conservative but accounts for early/late reporting discrepancies in both systems.
+
+Event Correlation Rules:
+Answer:
+
+Tornado Warning ↔ Tornado Report
+
+Severe Thunderstorm ↔ Wind, Hail
+
+Flood Warning ↔ Flash Flood or Local Flood Report
+
+Special Case: Include “Significant Weather Advisory” ↔ Any severe SPC report if within same geometry
+
+Rationale: This covers the most common and monetizable categories, while future-proofing against edge cases.
+
+✅ API Design (verified alerts):
+Answer:
+Use verified=true as a query parameter in /alerts, and include a spc_reports array in each alert object.
+Rationale: Keeps endpoint logic clean while embedding SPC links directly for front-end rendering or internal AI summarization.
+
+✅ Performance Considerations:
+Indexing Strategy:
+
+event, severity, effective, expires, area_desc, spc_verified
+
+GIN index on geometry for future PostGIS upgrade
+
+Composite index: (effective, expires, spc_verified)
+
+Batch vs Real-time Matching:
+Answer: Real-time is ideal but fragile.
+Implement: Buffered batch every 10 minutes to cross-reference any SPC report with unverified alerts within last 6 hrs.
+
+Memory Use Strategy:
+Use pagination + streaming when querying large historical datasets. Avoid pulling full JSON unless explicitly requested (e.g. via ?full=true).
+
+✅ Data Quality Flags:
+spc_confidence_score: based on location + time match
+
+spc_match_method: "fips", "latlon", "none"
+
+spc_report_count: integer
+
+Alerts with no SPC matches = spc_verified: false
+
+✅ Error Handling:
+If SPC Site Fails or Format Changes:
+
+Log and email alert
+
+Retry in 5 mins, exponential backoff to 30 mins
+
+Fallback to manual ingest via dashboard
+

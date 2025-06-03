@@ -1,6 +1,6 @@
 from app import db
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy import Column, String, Text, DateTime, Boolean, func, Index
+from sqlalchemy import Column, String, Text, DateTime, Date, Boolean, func, Index, UniqueConstraint
 from datetime import datetime
 import re
 
@@ -145,3 +145,80 @@ class IngestionLog(db.Model):
     
     def __repr__(self):
         return f'<IngestionLog {self.id}: {self.success}>'
+
+
+class SPCReport(db.Model):
+    """
+    Storm Prediction Center report model for verification
+    Stores tornado, wind, and hail reports from SPC daily files
+    """
+    __tablename__ = "spc_reports"
+
+    id = Column(db.Integer, primary_key=True)
+    report_date = Column(Date, nullable=False, index=True)  # YYMMDD from filename
+    report_type = Column(String(10), nullable=False, index=True)  # tornado, wind, hail
+    time_utc = Column(String(4))  # HHMM format from CSV
+    location = Column(String(100))
+    county = Column(String(50), index=True)
+    state = Column(String(2), index=True)
+    latitude = Column(db.Float)
+    longitude = Column(db.Float)
+    comments = Column(Text)
+    
+    # Type-specific fields stored as JSON for flexibility
+    magnitude = Column(JSONB)  # {f_scale: int} or {speed: int} or {size: int}
+    
+    # Tracking fields
+    raw_csv_line = Column(Text)  # Store original CSV line for audit
+    ingested_at = Column(DateTime, server_default=func.now())
+    
+    __table_args__ = (
+        Index('idx_spc_date_type', 'report_date', 'report_type'),
+        Index('idx_spc_location', 'state', 'county'),
+        Index('idx_spc_coords', 'latitude', 'longitude'),
+        # Ensure no duplicate reports from same CSV parse
+        UniqueConstraint('report_date', 'report_type', 'time_utc', 'latitude', 'longitude', 
+                        name='uq_spc_report_unique'),
+    )
+
+    def __repr__(self):
+        return f'<SPCReport {self.report_type} {self.report_date} {self.location}>'
+
+    def to_dict(self):
+        """Convert SPC report to dictionary"""
+        return {
+            'id': self.id,
+            'report_date': self.report_date.isoformat() if self.report_date else None,
+            'report_type': self.report_type,
+            'time_utc': self.time_utc,
+            'location': self.location,
+            'county': self.county,
+            'state': self.state,
+            'latitude': self.latitude,
+            'longitude': self.longitude,
+            'magnitude': self.magnitude,
+            'comments': self.comments,
+            'ingested_at': self.ingested_at.isoformat() if self.ingested_at else None
+        }
+
+
+class SPCIngestionLog(db.Model):
+    """
+    Log of SPC report ingestion attempts
+    """
+    __tablename__ = "spc_ingestion_logs"
+
+    id = Column(db.Integer, primary_key=True)
+    report_date = Column(Date, nullable=False)
+    started_at = Column(DateTime, server_default=func.now())
+    completed_at = Column(DateTime)
+    success = Column(Boolean, default=False)
+    tornado_reports = Column(db.Integer, default=0)
+    wind_reports = Column(db.Integer, default=0)
+    hail_reports = Column(db.Integer, default=0)
+    total_reports = Column(db.Integer, default=0)
+    error_message = Column(Text)
+    url_attempted = Column(String(200))
+
+    def __repr__(self):
+        return f'<SPCIngestionLog {self.report_date}: {self.success}>'
