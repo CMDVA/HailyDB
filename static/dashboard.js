@@ -41,6 +41,9 @@ function initializeDashboard() {
             updateLastUpdateTime();
         }, 30000);
         
+        // Start autonomous scheduler automatically
+        startAutonomousScheduler();
+        
         console.log('Dashboard initialized successfully');
     } catch (error) {
         console.error('Error initializing dashboard:', error);
@@ -1150,6 +1153,60 @@ async function forceReingestion(date, buttonElement) {
             button.disabled = false;
         }, 3000);
     }
+}
+
+// Start autonomous scheduler
+async function startAutonomousScheduler() {
+    try {
+        const response = await fetch('/internal/scheduler/start', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+            console.log('Autonomous scheduler started successfully');
+            updateStatusIndicator();
+        } else {
+            console.error('Failed to start autonomous scheduler:', result.error);
+        }
+    } catch (error) {
+        console.error('Error starting autonomous scheduler:', error);
+    }
+}
+
+// Stop autonomous scheduler
+async function stopAutonomousScheduler() {
+    try {
+        const response = await fetch('/internal/scheduler/stop', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+            console.log('Autonomous scheduler stopped successfully');
+            updateStatusIndicator();
+        } else {
+            console.error('Failed to stop autonomous scheduler:', result.error);
+        }
+    } catch (error) {
+        console.error('Error stopping autonomous scheduler:', error);
+    }
+}
+
+// Play button click handler
+function onPlayScheduler() {
+    startAutonomousScheduler();
+}
+
+// Pause button click handler
+function onPauseScheduler() {
+    stopAutonomousScheduler();
 }
 
 console.log('Dashboard JavaScript loaded successfully');

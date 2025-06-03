@@ -122,10 +122,18 @@
                 <div class="row no-gutters align-items-center">
                     <div class="col mr-2">
                         <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                            System Status
+                            Automatic Ingestion
                         </div>
-                        <div class="h5 mb-0 font-weight-bold text-success">
-                            <i class="fas fa-check-circle me-1"></i>Ready
+                        <div class="d-flex align-items-center">
+                            <span id="scheduler-status" class="me-2 font-weight-bold">
+                                <i class="fas fa-stop-circle me-1"></i>Stopped
+                            </span>
+                            <button id="scheduler-play-btn" class="btn btn-sm btn-success me-1" onclick="onPlayScheduler()" title="Start automatic ingestion">
+                                <i class="fas fa-play"></i>
+                            </button>
+                            <button id="scheduler-pause-btn" class="btn btn-sm btn-warning" onclick="onPauseScheduler()" style="display: none;" title="Stop automatic ingestion">
+                                <i class="fas fa-pause"></i>
+                            </button>
                         </div>
                     </div>
                     <div class="col-auto">
