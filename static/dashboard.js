@@ -111,16 +111,25 @@ function updateStatusIndicator() {
                     countdownTimer.textContent = `${timeString} (${operation})`;
                 }
                 
-                // Show progress if operation is imminent (< 30 seconds)
-                if (countdown <= 30 && countdown > 0) {
-                    if (progressDiv && progressText && progressBar) {
-                        progressDiv.style.display = 'block';
+                // Always show progress bar when scheduler is running
+                if (progressDiv && progressText && progressBar) {
+                    progressDiv.style.display = 'block';
+                    
+                    if (countdown <= 30 && countdown > 0) {
+                        // Operation is imminent - show startup progress
                         progressText.textContent = `Starting ${operation} ingestion...`;
                         const progress = ((30 - countdown) / 30) * 100;
                         progressBar.style.width = `${progress}%`;
+                        progressBar.className = 'progress-bar progress-bar-striped progress-bar-animated bg-warning';
+                    } else {
+                        // Show waiting state with time until next operation
+                        const totalInterval = operation === 'nws' ? 300 : 3600; // 5 min or 1 hour
+                        const elapsed = totalInterval - countdown;
+                        const progress = (elapsed / totalInterval) * 100;
+                        progressText.textContent = `Waiting for next ${operation} ingestion...`;
+                        progressBar.style.width = `${progress}%`;
+                        progressBar.className = 'progress-bar bg-info';
                     }
-                } else {
-                    if (progressDiv) progressDiv.style.display = 'none';
                 }
             } else {
                 if (countdownDiv) countdownDiv.style.display = 'none';
