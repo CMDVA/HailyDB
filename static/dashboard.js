@@ -221,30 +221,90 @@ async function loadTodaysAlerts() {
             
             html += '</tbody></table></div>';
             
-            // Show recent alerts with Date/Time | Severity | Type | Area format
+            // Show recent alerts with Date/Time | Severity | Type | Area | Actions format
             if (todaysAlerts.length > 0) {
+                // Pagination setup
+                const alertsPerPage = 50;
+                const totalPages = Math.ceil(todaysAlerts.length / alertsPerPage);
+                let currentPage = 1;
+                
                 html += '<div class="table-responsive"><table class="table table-sm small">';
-                html += '<thead><tr><th>Date/Time</th><th>Severity</th><th>Type</th><th>Area</th></tr></thead><tbody>';
+                html += '<thead><tr><th>Date/Time</th><th>Severity</th><th>Type</th><th>Area</th><th>Actions</th></tr></thead><tbody id="alerts-tbody">';
                 
                 // Sort by effective date descending (most recent first)
                 const sortedAlerts = todaysAlerts.sort((a, b) => new Date(b.effective) - new Date(a.effective));
                 
-                sortedAlerts.slice(0, 5).forEach(alert => {
-                    const dateTime = new Date(alert.effective).toLocaleString();
-                    const severityBadge = getSeverityColor(alert.severity);
-                    const shortArea = alert.area_desc ? 
-                        (alert.area_desc.length > 30 ? alert.area_desc.substring(0, 30) + '...' : alert.area_desc) : 
-                        'N/A';
+                // Function to render alerts for a specific page
+                function renderAlertsPage(page) {
+                    const start = (page - 1) * alertsPerPage;
+                    const end = start + alertsPerPage;
+                    const pageAlerts = sortedAlerts.slice(start, end);
                     
-                    html += `<tr>
-                        <td>${dateTime}</td>
-                        <td><span class="badge bg-${severityBadge}">${alert.severity || 'N/A'}</span></td>
-                        <td>${alert.event}</td>
-                        <td>${shortArea}</td>
-                    </tr>`;
-                });
+                    let pageHtml = '';
+                    pageAlerts.forEach(alert => {
+                        const dateTime = new Date(alert.effective).toLocaleString();
+                        const severityBadge = getSeverityColor(alert.severity);
+                        const shortArea = alert.area_desc ? 
+                            (alert.area_desc.length > 50 ? alert.area_desc.substring(0, 50) + '...' : alert.area_desc) : 
+                            'N/A';
+                        
+                        pageHtml += `<tr>
+                            <td>${dateTime}</td>
+                            <td><span class="badge bg-${severityBadge}">${alert.severity || 'N/A'}</span></td>
+                            <td>${alert.event}</td>
+                            <td>${shortArea}</td>
+                            <td><a href="/alert/${alert.id}" class="btn btn-sm btn-outline-primary">View Details</a></td>
+                        </tr>`;
+                    });
+                    return pageHtml;
+                }
                 
+                // Initial page load
+                html += renderAlertsPage(currentPage);
                 html += '</tbody></table></div>';
+                
+                // Pagination controls
+                if (totalPages > 1) {
+                    html += '<nav aria-label="Alerts pagination"><ul class="pagination pagination-sm justify-content-center">';
+                    
+                    // Previous button
+                    html += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+                        <a class="page-link" href="#" onclick="changePage(${currentPage - 1})" aria-label="Previous">
+                            <span aria-hidden="true">&laquo;</span>
+                        </a>
+                    </li>`;
+                    
+                    // Page numbers
+                    for (let i = 1; i <= Math.min(totalPages, 10); i++) {
+                        html += `<li class="page-item ${i === currentPage ? 'active' : ''}">
+                            <a class="page-link" href="#" onclick="changePage(${i})">${i}</a>
+                        </li>`;
+                    }
+                    
+                    if (totalPages > 10) {
+                        html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+                        html += `<li class="page-item">
+                            <a class="page-link" href="#" onclick="changePage(${totalPages})">${totalPages}</a>
+                        </li>`;
+                    }
+                    
+                    // Next button
+                    html += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+                        <a class="page-link" href="#" onclick="changePage(${currentPage + 1})" aria-label="Next">
+                            <span aria-hidden="true">&raquo;</span>
+                        </a>
+                    </li>`;
+                    
+                    html += '</ul></nav>';
+                }
+                
+                // Store data for pagination
+                window.dashboardAlertsData = {
+                    sortedAlerts: sortedAlerts,
+                    currentPage: currentPage,
+                    totalPages: totalPages,
+                    alertsPerPage: alertsPerPage
+                };
             }
             
             tableContainer.innerHTML = html;
@@ -258,6 +318,62 @@ async function loadTodaysAlerts() {
             tableContainer.innerHTML = '<p class="text-danger">Error loading today\'s alerts.</p>';
         }
     }
+}
+
+// Pagination function for dashboard alerts
+function changePage(page) {
+    if (!window.dashboardAlertsData) return;
+    
+    const { sortedAlerts, totalPages, alertsPerPage } = window.dashboardAlertsData;
+    
+    if (page < 1 || page > totalPages) return;
+    
+    const start = (page - 1) * alertsPerPage;
+    const end = start + alertsPerPage;
+    const pageAlerts = sortedAlerts.slice(start, end);
+    
+    let pageHtml = '';
+    pageAlerts.forEach(alert => {
+        const dateTime = new Date(alert.effective).toLocaleString();
+        const severityBadge = getSeverityColor(alert.severity);
+        const shortArea = alert.area_desc ? 
+            (alert.area_desc.length > 50 ? alert.area_desc.substring(0, 50) + '...' : alert.area_desc) : 
+            'N/A';
+        
+        pageHtml += `<tr>
+            <td>${dateTime}</td>
+            <td><span class="badge bg-${severityBadge}">${alert.severity || 'N/A'}</span></td>
+            <td>${alert.event}</td>
+            <td>${shortArea}</td>
+            <td><a href="/alert/${alert.id}" class="btn btn-sm btn-outline-primary">View Details</a></td>
+        </tr>`;
+    });
+    
+    document.getElementById('alerts-tbody').innerHTML = pageHtml;
+    
+    // Update pagination buttons
+    const paginationItems = document.querySelectorAll('.pagination .page-item');
+    paginationItems.forEach(item => {
+        item.classList.remove('active', 'disabled');
+        const link = item.querySelector('.page-link');
+        if (link && link.textContent == page) {
+            item.classList.add('active');
+        }
+    });
+    
+    // Update previous/next buttons
+    const prevButton = document.querySelector('.pagination .page-item:first-child');
+    const nextButton = document.querySelector('.pagination .page-item:last-child');
+    
+    if (page === 1 && prevButton) {
+        prevButton.classList.add('disabled');
+    }
+    if (page === totalPages && nextButton) {
+        nextButton.classList.add('disabled');
+    }
+    
+    // Update stored current page
+    window.dashboardAlertsData.currentPage = page;
 }
 
 // Load today's SPC events for cron verification
