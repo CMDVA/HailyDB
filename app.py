@@ -467,12 +467,11 @@ def internal_dashboard():
             Alert.severity, db.func.count(Alert.id)
         ).group_by(Alert.severity).all()
         
-        # Event type breakdown
-        event_stats = db.session.query(
-            Alert.event, db.func.count(Alert.id)
-        ).group_by(Alert.event).order_by(
-            db.func.count(Alert.id).desc()
-        ).limit(10).all()
+        # SPC Events statistics
+        spc_total_reports = SPCReport.query.count()
+        spc_tornado = SPCReport.query.filter(SPCReport.report_type == 'tornado').count()
+        spc_wind = SPCReport.query.filter(SPCReport.report_type == 'wind').count()
+        spc_hail = SPCReport.query.filter(SPCReport.report_type == 'hail').count()
         
         # Last ingestion
         last_alert = Alert.query.order_by(Alert.ingested_at.desc()).first()
@@ -481,8 +480,10 @@ def internal_dashboard():
             'total_alerts': total_alerts,
             'enriched_alerts': enriched_alerts,
             'recent_alerts_24h': recent_alerts,
-            'severity_stats': dict(severity_stats),
-            'event_stats': dict(event_stats),
+            'spc_total_reports': spc_total_reports,
+            'spc_tornado': spc_tornado,
+            'spc_wind': spc_wind,
+            'spc_hail': spc_hail,
             'last_ingestion': last_alert.ingested_at if last_alert else None,
             'scheduler_running': scheduler.running if scheduler else False
         }
