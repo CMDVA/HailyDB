@@ -506,14 +506,20 @@ async function loadNextWeek() {
         const loading = document.getElementById('loading-indicator');
         if (loading) loading.remove();
         
+        console.log('API Response:', data);
+        
         if (data.status === 'success' && data.results && data.results.length > 0) {
+            console.log('Results received:', data.results.length);
             // Get the current table body
             const tbody = container.querySelector('tbody');
+            console.log('Table body found:', tbody);
             if (tbody) {
                 // Filter out dates that already exist
+                console.log('Existing dates:', existingDates);
                 const newResults = data.results.filter(result => 
                     !existingDates.includes(result.date)
                 );
+                console.log('New results after filtering:', newResults.length, newResults);
                 
                 if (newResults.length > 0) {
                     // Add new rows to the existing table
