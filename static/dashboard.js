@@ -534,7 +534,7 @@ async function loadNextWeek() {
                         
                         const spcCount = result.spc_live_count !== null ? result.spc_live_count : 'N/A';
                         const reuploadButton = result.match_status === 'MISMATCH' ? 
-                            `<button class="btn btn-xs btn-outline-warning" onclick="triggerSPCReupload('${result.date}')">
+                            `<button class="btn btn-xs btn-outline-warning" onclick="forceReingestion('${result.date}', this)">
                                 <i class="fas fa-sync-alt"></i>
                             </button>` : 
                             '<span class="text-muted">-</span>';
