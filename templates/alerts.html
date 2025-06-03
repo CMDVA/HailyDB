@@ -41,8 +41,12 @@
                     </div>
                     <div class="col-md-3">
                         <label for="event" class="form-label">Event Type</label>
-                        <input type="text" class="form-control" id="event" name="event" 
-                               value="{{ request.args.get('event', '') }}" placeholder="e.g., Tornado Warning">
+                        <select class="form-select" id="event" name="event">
+                            <option value="">All Event Types</option>
+                            {% for alert_type in alert_types %}
+                            <option value="{{ alert_type }}" {{ 'selected' if request.args.get('event') == alert_type }}>{{ alert_type }}</option>
+                            {% endfor %}
+                        </select>
                     </div>
                     <div class="col-md-3">
                         <label for="per_page" class="form-label">Per Page</label>

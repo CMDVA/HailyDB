@@ -124,7 +124,11 @@ def get_alerts():
             }
         })
     
-    return render_template('alerts.html', alerts=alerts)
+    # Get actual alert types for dropdown
+    alert_types = db.session.query(Alert.event).distinct().order_by(Alert.event).all()
+    alert_types_list = [row[0] for row in alert_types if row[0]]
+    
+    return render_template('alerts.html', alerts=alerts, alert_types=alert_types_list)
 
 @app.route('/alerts/<alert_id>')
 def get_alert(alert_id):
