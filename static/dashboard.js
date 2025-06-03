@@ -5,6 +5,7 @@
 
 // Global variables
 let dashboardData = {};
+let lastShownResult = null;
 
 // Initialize dashboard
 function initializeDashboard() {
@@ -122,18 +123,24 @@ function updateStatusIndicator() {
                 if (progressDiv) progressDiv.style.display = 'none';
             }
             
-            // Show last operation result
+            // Show last operation result (only if it's new)
             if (scheduler.last_operation_result && lastResultDiv && resultText) {
-                lastResultDiv.style.display = 'block';
                 const result = scheduler.last_operation_result;
-                const isSuccess = result.success;
-                resultText.className = isSuccess ? 'text-success' : 'text-danger';
-                resultText.innerHTML = `<i class="fas fa-${isSuccess ? 'check' : 'exclamation-triangle'} me-1"></i>${result.message || (isSuccess ? 'Success' : 'Failed')}`;
+                const resultKey = `${result.operation}-${result.timestamp}-${result.message}`;
                 
-                // Auto-hide after 10 seconds
-                setTimeout(() => {
-                    if (lastResultDiv) lastResultDiv.style.display = 'none';
-                }, 10000);
+                // Only show if this is a new result
+                if (lastShownResult !== resultKey) {
+                    lastShownResult = resultKey;
+                    lastResultDiv.style.display = 'block';
+                    const isSuccess = result.success;
+                    resultText.className = isSuccess ? 'text-success' : 'text-danger';
+                    resultText.innerHTML = `<i class="fas fa-${isSuccess ? 'check' : 'exclamation-triangle'} me-1"></i>${result.message || (isSuccess ? 'Success' : 'Failed')}`;
+                    
+                    // Auto-hide after 10 seconds
+                    setTimeout(() => {
+                        if (lastResultDiv) lastResultDiv.style.display = 'none';
+                    }, 10000);
+                }
             }
         })
         .catch(error => {
