@@ -829,14 +829,14 @@ def get_autonomous_scheduler_status():
         from datetime import datetime, timedelta
         current_time = datetime.utcnow()
         
-        # Next NWS poll (every 5 minutes)
-        last_nws = status.get('last_nws_poll')
-        if last_nws:
-            last_nws_dt = datetime.fromisoformat(last_nws.replace('Z', '+00:00')) if isinstance(last_nws, str) else last_nws
-            next_nws = last_nws_dt + timedelta(minutes=5)
-            nws_countdown = max(0, int((next_nws - current_time).total_seconds()))
+        # Next NWS poll (at exact 5-minute intervals: 0, 5, 10, 15, etc.)
+        current_minute = current_time.minute
+        next_minute = ((current_minute // 5) + 1) * 5
+        if next_minute >= 60:
+            next_nws = current_time.replace(hour=(current_time.hour + 1) % 24, minute=0, second=0, microsecond=0)
         else:
-            nws_countdown = 0
+            next_nws = current_time.replace(minute=next_minute, second=0, microsecond=0)
+        nws_countdown = max(0, int((next_nws - current_time).total_seconds()))
         
         # Next SPC poll (every 30 minutes) 
         last_spc = status.get('last_spc_poll')

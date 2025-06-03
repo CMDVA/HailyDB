@@ -100,12 +100,24 @@ class AutonomousScheduler:
                 time.sleep(60)  # Wait longer on errors
     
     def _should_run_nws_poll(self, current_time: datetime) -> bool:
-        """Check if NWS polling should run"""
+        """Check if NWS polling should run - aligned to exact 5-minute intervals"""
+        # Calculate minutes since the hour
+        minutes_since_hour = current_time.minute
+        seconds_since_minute = current_time.second
+        
+        # Check if we're at an exact 5-minute mark (0, 5, 10, 15, etc.)
+        is_five_minute_mark = (minutes_since_hour % 5 == 0) and (seconds_since_minute < 30)
+        
+        # Only run if we're at a 5-minute mark AND haven't run recently
+        if not is_five_minute_mark:
+            return False
+            
         if self.last_nws_poll is None:
             return True
         
+        # Ensure we don't run multiple times within the same minute
         time_since_last = current_time - self.last_nws_poll
-        return time_since_last.total_seconds() >= (self.nws_interval * 60)
+        return time_since_last.total_seconds() >= 240  # At least 4 minutes since last run
     
     def _should_run_spc_poll(self, current_time: datetime) -> bool:
         """Check if SPC polling should run"""
