@@ -101,14 +101,21 @@ async function loadTodaysAlerts() {
             let html = `<div class="mb-2"><strong>${todaysAlerts.length} alerts ingested today</strong></div>`;
             html += '<div class="row text-center mb-2">';
             
-            // Show top 3 alert types
+            // Show top alert types (prioritize weather events)
+            const priorityTypes = ['Tornado Warning', 'Tornado Watch', 'Severe Thunderstorm Warning', 'Severe Thunderstorm Watch', 'Flash Flood Warning', 'Flood Warning'];
             const sortedTypes = Object.entries(alertsByType)
-                .sort((a, b) => b[1] - a[1])
-                .slice(0, 3);
+                .sort((a, b) => {
+                    // Prioritize important weather events
+                    const aPriority = priorityTypes.includes(a[0]) ? 0 : 1;
+                    const bPriority = priorityTypes.includes(b[0]) ? 0 : 1;
+                    if (aPriority !== bPriority) return aPriority - bPriority;
+                    return b[1] - a[1]; // Then by count
+                })
+                .slice(0, 6);
             
             sortedTypes.forEach(([type, count]) => {
                 const shortType = type.replace(' Warning', '').replace(' Watch', '').replace(' Advisory', '');
-                html += `<div class="col-4"><div class="h6 text-primary">${count}</div><small>${shortType}</small></div>`;
+                html += `<div class="col-2"><div class="h6 text-primary">${count}</div><small>${shortType}</small></div>`;
             });
             
             html += '</div>';
@@ -153,7 +160,7 @@ async function loadTodaysAlerts() {
 async function loadTodaysSPCEvents() {
     try {
         const today = new Date().toISOString().split('T')[0];
-        const response = await fetch(`/spc/reports?format=json`);
+        const response = await fetch(`/api/spc/reports?format=json`);
         const data = await response.json();
         
         const container = document.getElementById('todays-spc-events');
