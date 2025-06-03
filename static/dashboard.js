@@ -1327,7 +1327,8 @@ async function forceReingestion(date, buttonElement) {
 // Start autonomous scheduler
 async function startAutonomousScheduler() {
     try {
-        const response = await fetch('/internal/scheduler/start', {
+        showIngestionProgress('Starting NWS scheduler...', 30);
+        const response = await fetch('/internal/start-autonomous-scheduler', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -1337,19 +1338,26 @@ async function startAutonomousScheduler() {
         const result = await response.json();
         if (result.success) {
             console.log('Autonomous scheduler started successfully');
-            updateStatusIndicator();
+            showIngestionProgress('NWS scheduler running', 100);
+            setTimeout(() => {
+                hideIngestionProgress();
+                updateSchedulerStatus();
+            }, 1500);
         } else {
             console.error('Failed to start autonomous scheduler:', result.error);
+            hideIngestionProgress();
         }
     } catch (error) {
         console.error('Error starting autonomous scheduler:', error);
+        hideIngestionProgress();
     }
 }
 
 // Stop autonomous scheduler
 async function stopAutonomousScheduler() {
     try {
-        const response = await fetch('/internal/scheduler/stop', {
+        showIngestionProgress('Stopping NWS scheduler...', 30);
+        const response = await fetch('/internal/stop-autonomous-scheduler', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -1359,12 +1367,84 @@ async function stopAutonomousScheduler() {
         const result = await response.json();
         if (result.success) {
             console.log('Autonomous scheduler stopped successfully');
-            updateStatusIndicator();
+            showIngestionProgress('NWS scheduler stopped', 100);
+            setTimeout(() => {
+                hideIngestionProgress();
+                updateSchedulerStatus();
+            }, 1500);
         } else {
             console.error('Failed to stop autonomous scheduler:', result.error);
+            hideIngestionProgress();
         }
     } catch (error) {
         console.error('Error stopping autonomous scheduler:', error);
+        hideIngestionProgress();
+    }
+}
+
+// Update scheduler status and countdown displays
+async function updateSchedulerStatus() {
+    try {
+        const response = await fetch('/internal/autonomous-scheduler-status');
+        const data = await response.json();
+        
+        if (data.success) {
+            const status = data.status;
+            
+            // Update NWS status
+            const nwsStatus = document.getElementById('nws-status');
+            const nwsCountdown = document.getElementById('nws-countdown');
+            const nwsPlayBtn = document.querySelector('.nws-play-btn');
+            const nwsPauseBtn = document.querySelector('.nws-pause-btn');
+            
+            if (status.running) {
+                if (nwsStatus) nwsStatus.textContent = 'Running';
+                if (nwsStatus) nwsStatus.className = 'text-success fw-bold';
+                if (nwsPlayBtn) nwsPlayBtn.style.display = 'none';
+                if (nwsPauseBtn) nwsPauseBtn.style.display = 'inline-block';
+                
+                // Calculate next NWS poll countdown
+                if (status.next_nws_poll && nwsCountdown) {
+                    const nextPoll = new Date(status.next_nws_poll);
+                    const now = new Date();
+                    const secondsLeft = Math.max(0, Math.floor((nextPoll - now) / 1000));
+                    const minutes = Math.floor(secondsLeft / 60);
+                    const seconds = secondsLeft % 60;
+                    nwsCountdown.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                }
+            } else {
+                if (nwsStatus) nwsStatus.textContent = 'Stopped';
+                if (nwsStatus) nwsStatus.className = 'text-danger fw-bold';
+                if (nwsPlayBtn) nwsPlayBtn.style.display = 'inline-block';
+                if (nwsPauseBtn) nwsPauseBtn.style.display = 'none';
+                if (nwsCountdown) nwsCountdown.textContent = '--';
+            }
+            
+            // Update SPC status
+            const spcStatus = document.getElementById('spc-status');
+            const spcCountdown = document.getElementById('spc-countdown');
+            
+            if (status.running) {
+                if (spcStatus) spcStatus.textContent = 'Running';
+                if (spcStatus) spcStatus.className = 'text-success fw-bold';
+                
+                // Calculate next SPC poll countdown
+                if (status.next_spc_poll && spcCountdown) {
+                    const nextPoll = new Date(status.next_spc_poll);
+                    const now = new Date();
+                    const secondsLeft = Math.max(0, Math.floor((nextPoll - now) / 1000));
+                    const minutes = Math.floor(secondsLeft / 60);
+                    const seconds = secondsLeft % 60;
+                    spcCountdown.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                }
+            } else {
+                if (spcStatus) spcStatus.textContent = 'Stopped';
+                if (spcStatus) spcStatus.className = 'text-danger fw-bold';
+                if (spcCountdown) spcCountdown.textContent = '--';
+            }
+        }
+    } catch (error) {
+        console.error('Error updating scheduler status:', error);
     }
 }
 
@@ -1422,5 +1502,8 @@ function hideIngestionProgress() {
     if (nwsProgressDiv) nwsProgressDiv.style.display = 'none';
     if (spcProgressDiv) spcProgressDiv.style.display = 'none';
 }
+
+// Start periodic status updates
+setInterval(updateSchedulerStatus, 5000); // Update every 5 seconds
 
 console.log('Dashboard JavaScript loaded successfully');
