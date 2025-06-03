@@ -42,14 +42,18 @@ def number_format(value):
         return value
 
 # Import other modules after app initialization
-from models import Alert
+from models import Alert, SPCReport, SPCIngestionLog
 from ingest import IngestService
 from enrich import EnrichmentService
+from spc_ingest import SPCIngestService
+from spc_matcher import SPCMatchingService
 from config import Config
 
 # Global services
 ingest_service = None
 enrich_service = None
+spc_ingest_service = None
+spc_matching_service = None
 scheduler = None
 
 with app.app_context():

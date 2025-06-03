@@ -32,6 +32,9 @@ class Alert(db.Model):
     # SPC Cross-referencing
     spc_verified = Column(Boolean, default=False)
     spc_reports = Column(JSONB)            # List of matching SPC reports
+    spc_confidence_score = Column(db.Float) # Match confidence (0.0-1.0)
+    spc_match_method = Column(String(10))   # "fips", "latlon", "none"
+    spc_report_count = Column(db.Integer, default=0)
 
     # Metadata
     ingested_at = Column(DateTime, server_default=func.now())
