@@ -111,31 +111,67 @@ function updateStatusIndicator() {
                     countdownTimer.textContent = `${timeString} (${operation})`;
                 }
                 
-                // Always show progress bar when scheduler is running
+                // Update NWS progress bar
                 if (progressDiv && progressText && progressBar) {
                     progressDiv.style.display = 'block';
                     
-                    if (countdown <= 30 && countdown > 0) {
-                        // Operation is imminent - show startup progress
-                        progressText.textContent = `Starting ${operation} ingestion...`;
+                    if (countdown <= 30 && countdown > 0 && operation === 'nws') {
+                        progressText.textContent = `Starting NWS ingestion...`;
                         const progress = ((30 - countdown) / 30) * 100;
                         progressBar.style.width = `${progress}%`;
                         progressBar.className = 'progress-bar progress-bar-striped progress-bar-animated bg-warning';
                     } else {
-                        // Show waiting state with time until next operation
-                        const totalInterval = operation === 'nws' ? 300 : 3600; // 5 min or 1 hour
+                        const totalInterval = 300; // 5 minutes for NWS
                         const elapsed = totalInterval - countdown;
                         const progress = (elapsed / totalInterval) * 100;
-                        progressText.textContent = `Waiting for next ${operation} ingestion...`;
+                        progressText.textContent = `Waiting for next NWS ingestion...`;
                         progressBar.style.width = `${progress}%`;
                         progressBar.className = 'progress-bar bg-info';
                     }
                 }
                 
-                // Show last ingestion result persistently
-                if (lastResultDiv && resultText && scheduler.last_operation) {
+                // Update SPC progress bar
+                const spcProgressDiv = document.getElementById('spc-progress');
+                const spcProgressText = document.getElementById('spc-progress-text');
+                const spcProgressBar = document.getElementById('spc-progress-bar');
+                
+                if (spcProgressDiv && spcProgressText && spcProgressBar) {
+                    spcProgressDiv.style.display = 'block';
+                    
+                    if (countdown <= 30 && countdown > 0 && operation === 'spc') {
+                        spcProgressText.textContent = `Starting SPC ingestion...`;
+                        const progress = ((30 - countdown) / 30) * 100;
+                        spcProgressBar.style.width = `${progress}%`;
+                        spcProgressBar.className = 'progress-bar bg-warning progress-bar-striped progress-bar-animated';
+                    } else {
+                        const totalInterval = 300; // 5 minutes for SPC too
+                        const elapsed = totalInterval - countdown;
+                        const progress = (elapsed / totalInterval) * 100;
+                        spcProgressText.textContent = `Waiting for next SPC ingestion...`;
+                        spcProgressBar.style.width = `${progress}%`;
+                        spcProgressBar.className = 'progress-bar bg-warning';
+                    }
+                }
+                
+                // Update SPC countdown
+                const spcCountdownDiv = document.getElementById('spc-countdown');
+                const spcCountdownTimer = document.getElementById('spc-countdown-timer');
+                
+                if (spcCountdownDiv && spcCountdownTimer) {
+                    spcCountdownDiv.style.display = 'block';
+                    const nextTime = new Date(Date.now() + countdown * 1000);
+                    const timeString = nextTime.toLocaleTimeString('en-US', { 
+                        hour: 'numeric', 
+                        minute: '2-digit',
+                        hour12: true 
+                    });
+                    spcCountdownTimer.textContent = `${timeString} (${operation})`;
+                }
+                
+                // Show NWS last ingestion result
+                if (lastResultDiv && resultText && scheduler.last_nws_operation) {
                     lastResultDiv.style.display = 'block';
-                    const lastOp = scheduler.last_operation;
+                    const lastOp = scheduler.last_nws_operation;
                     const lastTime = new Date(lastOp.completed_at).toLocaleTimeString('en-US', {
                         hour: 'numeric',
                         minute: '2-digit',
@@ -150,10 +186,58 @@ function updateStatusIndicator() {
                         resultText.textContent = `Last Ingestion: Failed at ${lastTime}`;
                     }
                 }
+                
+                // Show SPC last ingestion result
+                const spcLastResultDiv = document.getElementById('spc-last-result');
+                const spcResultText = document.getElementById('spc-result-text');
+                
+                if (spcLastResultDiv && spcResultText && scheduler.last_spc_operation) {
+                    spcLastResultDiv.style.display = 'block';
+                    const lastOp = scheduler.last_spc_operation;
+                    const lastTime = new Date(lastOp.completed_at).toLocaleTimeString('en-US', {
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        hour12: true
+                    });
+                    
+                    if (lastOp.success) {
+                        spcResultText.className = 'text-success';
+                        spcResultText.textContent = `Last Ingestion: ${lastOp.records_new} Reports at ${lastTime}`;
+                    } else {
+                        spcResultText.className = 'text-danger';
+                        spcResultText.textContent = `Last Ingestion: Failed at ${lastTime}`;
+                    }
+                }
+                // Update SPC status display
+                const spcStatusElement = document.getElementById('spc-status');
+                if (spcStatusElement) {
+                    if (scheduler.running) {
+                        spcStatusElement.className = 'text-success me-2 font-weight-bold';
+                        spcStatusElement.innerHTML = '<i class="fas fa-play-circle me-1"></i>Running';
+                    } else {
+                        spcStatusElement.className = 'text-danger me-2 font-weight-bold';
+                        spcStatusElement.innerHTML = '<i class="fas fa-stop-circle me-1"></i>Stopped';
+                    }
+                }
+                
             } else {
                 if (countdownDiv) countdownDiv.style.display = 'none';
                 if (progressDiv) progressDiv.style.display = 'none';
                 if (lastResultDiv) lastResultDiv.style.display = 'none';
+                
+                // Hide SPC displays too
+                const spcProgressDiv = document.getElementById('spc-progress');
+                const spcCountdownDiv = document.getElementById('spc-countdown');
+                const spcLastResultDiv = document.getElementById('spc-last-result');
+                const spcStatusElement = document.getElementById('spc-status');
+                
+                if (spcProgressDiv) spcProgressDiv.style.display = 'none';
+                if (spcCountdownDiv) spcCountdownDiv.style.display = 'none';
+                if (spcLastResultDiv) spcLastResultDiv.style.display = 'none';
+                if (spcStatusElement) {
+                    spcStatusElement.className = 'text-danger me-2 font-weight-bold';
+                    spcStatusElement.innerHTML = '<i class="fas fa-stop-circle me-1"></i>Stopped';
+                }
             }
 
         })
