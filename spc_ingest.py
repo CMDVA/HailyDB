@@ -322,13 +322,12 @@ class SPCIngestService:
         
         for report_data in reports:
             try:
-                # Create unique key for duplicate detection
+                # Create unique key for duplicate detection using the full raw CSV line
+                # This ensures we only filter true duplicates, not legitimate multiple reports
                 unique_key = (
                     report_data['report_date'],
                     report_data['report_type'],
-                    report_data['time_utc'],
-                    report_data['latitude'],
-                    report_data['longitude']
+                    report_data['raw_csv_line']
                 )
                 
                 # Skip if we've already processed this exact report in this batch
@@ -336,13 +335,11 @@ class SPCIngestService:
                     logger.debug(f"Duplicate within batch ignored: {report_data['location']} {report_data['time_utc']}")
                     continue
                 
-                # Check if report already exists in database
+                # Check if exact same report already exists in database using raw CSV line
                 existing = SPCReport.query.filter(
                     SPCReport.report_date == report_data['report_date'],
-                    SPCReport.report_type == report_data['report_type'], 
-                    SPCReport.time_utc == report_data['time_utc'],
-                    SPCReport.latitude == report_data['latitude'],
-                    SPCReport.longitude == report_data['longitude']
+                    SPCReport.report_type == report_data['report_type'],
+                    SPCReport.raw_csv_line == report_data['raw_csv_line']
                 ).first()
                 
                 if existing:
