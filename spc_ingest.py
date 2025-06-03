@@ -95,13 +95,24 @@ class SPCIngestService:
             
             # Download CSV
             response = requests.get(url, timeout=Config.REQUEST_TIMEOUT)
-            logger.info(f"Response status: {response.status_code}, headers: {dict(response.headers)}")
+            logger.info(f"Response status: {response.status_code}")
+            logger.info(f"Response headers: {dict(response.headers)}")
             logger.info(f"Response encoding: {response.encoding}")
             response.raise_for_status()
             
+            # Check response content
+            logger.info(f"Raw response length: {len(response.content)} bytes")
+            logger.info(f"Text response length: {len(response.text)} characters")
+            
+            if not response.content:
+                raise Exception("Empty response content received from SPC")
+            
+            if not response.text.strip():
+                raise Exception("Empty text content after decoding")
+            
+            logger.info(f"First 500 chars: {repr(response.text[:500])}")
+            
             # Parse CSV content
-            logger.info(f"CSV response length: {len(response.text)} characters")
-            logger.info(f"First 200 chars: {repr(response.text[:200])}")
             result = self._parse_spc_csv(response.text, report_date)
             
             # Check if we have more reports than before
