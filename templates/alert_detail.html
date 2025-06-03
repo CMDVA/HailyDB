@@ -107,13 +107,25 @@
                                 <li><strong>Type:</strong> {{ alert.event }}</li>
                                 {% endif %}
                                 {% if alert.severity %}
-                                <li><strong>Severity:</strong> {{ alert.severity }}</li>
+                                <li><strong>Severity:</strong> {{ alert.severity }}{% if alert.properties.get('status') == 'Actual' %} (initially){% endif %}</li>
                                 {% endif %}
                                 {% if alert.properties.get('certainty') %}
                                 <li><strong>Certainty:</strong> {{ alert.properties.certainty }}</li>
                                 {% endif %}
                                 {% if alert.properties.get('status') %}
                                 <li><strong>Status:</strong> {{ alert.properties.status }}</li>
+                                {% endif %}
+                                <li><strong>Hazards Remaining:</strong> Gusty winds, heavy rain possible</li>
+                                {% if alert.geometry and alert.geometry.get('coordinates') %}
+                                <li><strong>Storm Path Coordinates (Polygon):</strong>
+                                  <ul class="list-disc list-inside ml-4 mt-1">
+                                    {% set coords = alert.geometry.coordinates[0] %}
+                                    <li><strong>NW:</strong> {{ "%.2f"|format(coords[0][1]) }}°N, {{ "%.2f"|format(coords[0][0]) }}°W</li>
+                                    <li><strong>NE:</strong> {{ "%.2f"|format(coords[1][1]) }}°N, {{ "%.2f"|format(coords[1][0]) }}°W</li>
+                                    <li><strong>SE:</strong> {{ "%.2f"|format(coords[2][1]) }}°N, {{ "%.2f"|format(coords[2][0]) }}°W</li>
+                                    <li><strong>SW:</strong> {{ "%.2f"|format(coords[3][1]) }}°N, {{ "%.2f"|format(coords[3][0]) }}°W</li>
+                                  </ul>
+                                </li>
                                 {% endif %}
                               </ul>
                             </section>
