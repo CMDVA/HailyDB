@@ -453,10 +453,10 @@ async function loadSPCVerificationTable() {
 // Load next week of SPC verification data
 async function loadNextWeek() {
     try {
-        // Find the most recent date in the current table
+        // Find the oldest date in the current table
         const container = document.getElementById('todays-spc-events');
         const tableRows = container.querySelectorAll('tbody tr');
-        let mostRecentDate = null;
+        let oldestDate = null;
         
         // Get all existing dates first
         const existingDates = [];
@@ -466,30 +466,30 @@ async function loadNextWeek() {
                 const dateStr = dateCell.textContent.trim();
                 existingDates.push(dateStr);
                 const date = new Date(dateStr);
-                if (!mostRecentDate || date > mostRecentDate) {
-                    mostRecentDate = date;
+                if (!oldestDate || date < oldestDate) {
+                    oldestDate = date;
                 }
             }
         });
         
-        if (!mostRecentDate) {
-            // If no dates found, start from yesterday (so next week starts today)
-            mostRecentDate = new Date();
-            mostRecentDate.setDate(mostRecentDate.getDate() - 1);
+        if (!oldestDate) {
+            // If no dates found, start from 8 days ago
+            oldestDate = new Date();
+            oldestDate.setDate(oldestDate.getDate() - 8);
         }
         
-        // Calculate the next 7 days starting from the day after the most recent
-        const startDate = new Date(mostRecentDate);
-        startDate.setDate(startDate.getDate() + 1);
+        // Calculate the previous 7 days ending the day before the oldest
+        const endDate = new Date(oldestDate);
+        endDate.setDate(endDate.getDate() - 1);
         
-        const endDate = new Date(startDate);
-        endDate.setDate(endDate.getDate() + 6);
+        const startDate = new Date(endDate);
+        startDate.setDate(startDate.getDate() - 6);
         
         // Format dates for API call
         const startDateStr = startDate.toISOString().split('T')[0];
         const endDateStr = endDate.toISOString().split('T')[0];
         
-        console.log(`Loading SPC data from ${startDateStr} to ${endDateStr}`);
+        console.log(`Loading previous week SPC data from ${startDateStr} to ${endDateStr}`);
         
         // Show loading message below existing content
         const loadingDiv = document.createElement('div');
