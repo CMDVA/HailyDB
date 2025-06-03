@@ -492,8 +492,8 @@ async function refreshSPCVerificationData() {
         
         console.log(`[REFRESH] Refreshing data from ${startDate} to ${endDate}`);
         
-        // Fetch fresh verification data
-        const response = await fetch(`/internal/spc-verify?start_date=${startDate}&end_date=${endDate}`);
+        // Fetch fresh verification data with JSON format
+        const response = await fetch(`/internal/spc-verify?start_date=${startDate}&end_date=${endDate}&format=json`);
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}`);
         }
@@ -527,7 +527,9 @@ async function refreshSPCVerificationData() {
                     `<button class="btn btn-xs btn-outline-warning" onclick="forceReingestion('${result.date}', this)">
                         <i class="fas fa-sync-alt"></i>
                     </button>` : 
-                    '<span class="text-muted">-</span>';
+                    `<button class="btn btn-xs btn-outline-secondary" disabled>
+                        <i class="fas fa-check"></i>
+                    </button>`;
                 const actionButtons = externalLink + reuploadButton;
                 
                 const newRow = document.createElement('tr');
@@ -541,8 +543,8 @@ async function refreshSPCVerificationData() {
                 tbody.appendChild(newRow);
             });
             
-            // Update timestamp
-            const timestampElement = container.querySelector('.text-muted');
+            // Update timestamp outside the table
+            const timestampElement = container.parentElement.querySelector('.text-muted');
             if (timestampElement) {
                 timestampElement.textContent = `Last verified: ${new Date().toLocaleTimeString()}`;
             }
@@ -648,7 +650,9 @@ async function loadNextWeek() {
                             `<button class="btn btn-xs btn-outline-warning" onclick="forceReingestion('${result.date}', this)">
                                 <i class="fas fa-sync-alt"></i>
                             </button>` : 
-                            '<span class="text-muted">-</span>';
+                            `<button class="btn btn-xs btn-outline-secondary" disabled>
+                                <i class="fas fa-check"></i>
+                            </button>`;
                         const actionButtons = externalLink + reuploadButton;
                         
                         const newRow = document.createElement('tr');
