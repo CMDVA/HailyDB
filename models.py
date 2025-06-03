@@ -1,7 +1,8 @@
 from app import db
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy import Column, String, Text, DateTime, Boolean, func
+from sqlalchemy import Column, String, Text, DateTime, Boolean, func, Index
 from datetime import datetime
+import re
 
 class Alert(db.Model):
     """
@@ -35,6 +36,17 @@ class Alert(db.Model):
     # Metadata
     ingested_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    
+    # Database indexes for location-based queries
+    __table_args__ = (
+        Index('idx_alert_area_desc', 'area_desc'),
+        Index('idx_alert_severity', 'severity'),
+        Index('idx_alert_event', 'event'),
+        Index('idx_alert_effective', 'effective'),
+        Index('idx_alert_expires', 'expires'),
+        Index('idx_alert_ingested_at', 'ingested_at'),
+        Index('idx_alert_active', 'effective', 'expires'),
+    )
 
     def __repr__(self):
         return f'<Alert {self.id}: {self.event}>'
@@ -55,7 +67,10 @@ class Alert(db.Model):
             'ai_tags': self.ai_tags,
             'spc_verified': self.spc_verified,
             'spc_reports': self.spc_reports,
-            'ingested_at': self.ingested_at.isoformat() if self.ingested_at else None
+            'ingested_at': self.ingested_at.isoformat() if self.ingested_at else None,
+            'is_active': self.is_active,
+            'duration_minutes': self.duration_minutes,
+            'location': self.get_location_info()
         }
     
     @property
@@ -71,6 +86,47 @@ class Alert(db.Model):
         if not self.effective or not self.expires:
             return None
         return int((self.expires - self.effective).total_seconds() / 60)
+    
+    def extract_states(self):
+        """Extract state codes from area description"""
+        if not self.area_desc:
+            return []
+        
+        # Match state abbreviations (e.g., "FL", "CA", "TX")
+        state_pattern = r'\b([A-Z]{2})\b'
+        states = re.findall(state_pattern, self.area_desc)
+        return list(set(states))
+    
+    def extract_counties(self):
+        """Extract county names from area description"""
+        if not self.area_desc:
+            return []
+        
+        # Split by semicolon and extract county names before state codes
+        areas = self.area_desc.split(';')
+        counties = []
+        
+        for area in areas:
+            area = area.strip()
+            # Match pattern "County Name, ST"
+            county_match = re.match(r'^([^,]+),\s*([A-Z]{2})$', area)
+            if county_match:
+                county_name = county_match.group(1).strip()
+                # Remove " County" suffix if present
+                county_name = re.sub(r'\s+County$', '', county_name)
+                counties.append(county_name)
+        
+        return counties
+    
+    def get_location_info(self):
+        """Get structured location information for API consumption"""
+        return {
+            'states': self.extract_states(),
+            'counties': self.extract_counties(),
+            'area_description': self.area_desc,
+            'geocodes': self.properties.get('geocode', {}) if self.properties else {},
+            'affected_zones': self.properties.get('affectedZones', []) if self.properties else []
+        }
 
 class IngestionLog(db.Model):
     """

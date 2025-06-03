@@ -69,6 +69,10 @@ def get_alerts():
     per_page = request.args.get('per_page', 50, type=int)
     severity = request.args.get('severity')
     event = request.args.get('event')
+    state = request.args.get('state')
+    county = request.args.get('county')
+    area = request.args.get('area')
+    active_only = request.args.get('active_only', 'false').lower() == 'true'
     
     query = Alert.query.order_by(Alert.ingested_at.desc())
     
@@ -76,6 +80,19 @@ def get_alerts():
         query = query.filter(Alert.severity == severity)
     if event:
         query = query.filter(Alert.event.ilike(f'%{event}%'))
+    if state:
+        query = query.filter(Alert.area_desc.ilike(f'%{state}%'))
+    if county:
+        query = query.filter(Alert.area_desc.ilike(f'%{county}%'))
+    if area:
+        query = query.filter(Alert.area_desc.ilike(f'%{area}%'))
+    if active_only:
+        from datetime import datetime
+        now = datetime.utcnow()
+        query = query.filter(
+            Alert.effective <= now,
+            Alert.expires > now
+        )
     
     alerts = query.paginate(
         page=page,
@@ -152,6 +169,132 @@ def get_alerts_summary():
         return jsonify({'summaries': summaries})
     
     return render_template('summaries.html', summaries=summaries)
+
+@app.route('/api/alerts/by-state/<state>')
+def get_alerts_by_state(state):
+    """Get alerts for a specific state"""
+    query = Alert.query.filter(
+        Alert.area_desc.ilike(f'%{state}%')
+    ).order_by(Alert.ingested_at.desc())
+    
+    active_only = request.args.get('active_only', 'false').lower() == 'true'
+    if active_only:
+        from datetime import datetime
+        now = datetime.utcnow()
+        query = query.filter(
+            Alert.effective <= now,
+            Alert.expires > now
+        )
+    
+    alerts = query.all()
+    
+    return jsonify({
+        'state': state,
+        'total_alerts': len(alerts),
+        'alerts': [alert.to_dict() for alert in alerts]
+    })
+
+@app.route('/api/alerts/by-county/<state>/<county>')
+def get_alerts_by_county(state, county):
+    """Get alerts for a specific county"""
+    query = Alert.query.filter(
+        Alert.area_desc.ilike(f'%{county}%'),
+        Alert.area_desc.ilike(f'%{state}%')
+    ).order_by(Alert.ingested_at.desc())
+    
+    active_only = request.args.get('active_only', 'false').lower() == 'true'
+    if active_only:
+        from datetime import datetime
+        now = datetime.utcnow()
+        query = query.filter(
+            Alert.effective <= now,
+            Alert.expires > now
+        )
+    
+    alerts = query.all()
+    
+    return jsonify({
+        'state': state,
+        'county': county,
+        'total_alerts': len(alerts),
+        'alerts': [alert.to_dict() for alert in alerts]
+    })
+
+@app.route('/api/alerts/active')
+def get_active_alerts():
+    """Get all currently active alerts"""
+    from datetime import datetime
+    now = datetime.utcnow()
+    
+    alerts = Alert.query.filter(
+        Alert.effective <= now,
+        Alert.expires > now
+    ).order_by(Alert.severity.desc(), Alert.ingested_at.desc()).all()
+    
+    return jsonify({
+        'timestamp': now.isoformat(),
+        'total_active': len(alerts),
+        'alerts': [alert.to_dict() for alert in alerts]
+    })
+
+@app.route('/api/alerts/search')
+def search_alerts():
+    """Advanced search endpoint for external applications"""
+    # Location parameters
+    state = request.args.get('state')
+    county = request.args.get('county')
+    area = request.args.get('area')
+    
+    # Alert parameters
+    severity = request.args.get('severity')
+    event_type = request.args.get('event_type')
+    active_only = request.args.get('active_only', 'false').lower() == 'true'
+    
+    # Pagination
+    page = request.args.get('page', 1, type=int)
+    limit = min(request.args.get('limit', 50, type=int), 100)
+    
+    query = Alert.query
+    
+    # Apply filters
+    if state:
+        query = query.filter(Alert.area_desc.ilike(f'%{state}%'))
+    if county:
+        query = query.filter(Alert.area_desc.ilike(f'%{county}%'))
+    if area:
+        query = query.filter(Alert.area_desc.ilike(f'%{area}%'))
+    if severity:
+        query = query.filter(Alert.severity == severity)
+    if event_type:
+        query = query.filter(Alert.event.ilike(f'%{event_type}%'))
+    
+    if active_only:
+        from datetime import datetime
+        now = datetime.utcnow()
+        query = query.filter(
+            Alert.effective <= now,
+            Alert.expires > now
+        )
+    
+    # Execute query with pagination
+    total = query.count()
+    alerts = query.order_by(Alert.ingested_at.desc()).offset((page - 1) * limit).limit(limit).all()
+    
+    return jsonify({
+        'total': total,
+        'page': page,
+        'limit': limit,
+        'pages': (total + limit - 1) // limit,
+        'filters': {
+            'state': state,
+            'county': county,
+            'area': area,
+            'severity': severity,
+            'event_type': event_type,
+            'active_only': active_only
+        },
+        'alerts': [alert.to_dict() for alert in alerts]
+    })
 
 @app.route('/alerts/enrich/<alert_id>', methods=['POST'])
 def enrich_alert(alert_id):
