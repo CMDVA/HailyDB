@@ -1023,6 +1023,108 @@ def ingestion_logs_data():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/spc-matches')
+def spc_matches():
+    """View SPC verified matches page"""
+    return render_template('spc_matches.html')
+
+@app.route('/spc-matches/data')
+def spc_matches_data():
+    """API endpoint for SPC verified matches data"""
+    try:
+        hours = int(request.args.get('hours', 168))  # Default to 7 days
+        event_filter = request.args.get('event', '')
+        method_filter = request.args.get('method', '')
+        confidence_filter = request.args.get('confidence', '')
+        state_filter = request.args.get('state', '')
+        
+        # Build query for verified alerts
+        query = Alert.query.filter(Alert.spc_verified == True)
+        
+        # Filter by time
+        since = datetime.utcnow() - timedelta(hours=hours)
+        query = query.filter(Alert.effective >= since)
+        
+        # Filter by event type
+        if event_filter:
+            query = query.filter(Alert.event == event_filter)
+        
+        # Filter by match method
+        if method_filter:
+            query = query.filter(Alert.spc_match_method == method_filter)
+        
+        # Filter by confidence level
+        if confidence_filter == 'high':
+            query = query.filter(Alert.spc_confidence_score >= 0.8)
+        elif confidence_filter == 'medium':
+            query = query.filter(Alert.spc_confidence_score >= 0.5, Alert.spc_confidence_score < 0.8)
+        elif confidence_filter == 'low':
+            query = query.filter(Alert.spc_confidence_score < 0.5)
+        
+        # Filter by state (extract from area_desc)
+        if state_filter:
+            query = query.filter(Alert.area_desc.contains(state_filter))
+        
+        # Order by most recent first
+        matches = query.order_by(Alert.effective.desc()).limit(100).all()
+        
+        # Calculate summary statistics
+        total_alerts = Alert.query.filter(Alert.effective >= since).count()
+        verified_count = len(matches) if not any([event_filter, method_filter, confidence_filter, state_filter]) else query.count()
+        total_reports = sum(match.spc_report_count or 0 for match in matches)
+        high_confidence_count = sum(1 for match in matches if (match.spc_confidence_score or 0) >= 0.8)
+        verification_rate = round((verified_count / total_alerts * 100) if total_alerts > 0 else 0, 1)
+        
+        # Get unique states for filter dropdown
+        states = set()
+        for match in matches:
+            if match.area_desc:
+                # Extract state codes from area description
+                import re
+                state_matches = re.findall(r'\b([A-Z]{2})\b', match.area_desc)
+                states.update(state_matches)
+        
+        # Format matches for JSON response
+        formatted_matches = []
+        for match in matches:
+            # Parse SPC reports
+            spc_reports = []
+            if match.spc_reports:
+                for report in match.spc_reports:
+                    spc_reports.append({
+                        'report_type': report.get('type', 'unknown'),
+                        'time_utc': report.get('time', ''),
+                        'location': report.get('location', ''),
+                        'county': report.get('county', ''),
+                        'state': report.get('state', ''),
+                        'comments': report.get('comments', '')
+                    })
+            
+            formatted_matches.append({
+                'id': match.id,
+                'effective': match.effective.isoformat() if match.effective else None,
+                'event': match.event,
+                'area_desc': match.area_desc,
+                'match_method': match.spc_match_method or 'unknown',
+                'confidence': match.spc_confidence_score or 0,
+                'report_count': match.spc_report_count or 0,
+                'spc_reports': spc_reports
+            })
+        
+        return jsonify({
+            'summary': {
+                'verified_count': verified_count,
+                'total_reports': total_reports,
+                'high_confidence_count': high_confidence_count,
+                'verification_rate': verification_rate
+            },
+            'matches': formatted_matches,
+            'states': sorted(list(states))
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == '__main__':
     with app.app_context():
         init_scheduler()
