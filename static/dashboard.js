@@ -30,12 +30,12 @@ function initializeDashboard() {
         
         // Load today's data for cron verification
         loadTodaysAlerts();
-        loadTodaysSPCEvents();
+        loadSPCVerificationTable();
         
         // Set up automatic refresh every 30 seconds
         setInterval(() => {
             loadTodaysAlerts();
-            loadTodaysSPCEvents();
+            loadSPCVerificationTable();
             updateStatusIndicator();
             updateNextPollTime();
             updateLastUpdateTime();
@@ -376,8 +376,8 @@ function changePage(page) {
     window.dashboardAlertsData.currentPage = page;
 }
 
-// Load today's SPC events for cron verification
-async function loadTodaysSPCEvents() {
+// Load SPC verification data (initial load only)
+async function loadSPCVerificationTable() {
     try {
         const today = new Date().toISOString().split('T')[0];
         const response = await fetch(`/api/spc/reports?format=json`);

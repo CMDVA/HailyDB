@@ -606,10 +606,19 @@ def spc_verify():
     try:
         verification_service = SPCVerificationService(db.session)
         
-        # Get date range from query params (default to last 7 days)
-        days = request.args.get('days', 7, type=int)
-        end_date = datetime.utcnow().date()
-        start_date = end_date - timedelta(days=days-1)
+        # Get date range from query params
+        start_date_str = request.args.get('start_date')
+        end_date_str = request.args.get('end_date')
+        
+        if start_date_str and end_date_str:
+            # Use provided date range
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+        else:
+            # Default to last 7 days
+            days = request.args.get('days', 7, type=int)
+            end_date = datetime.utcnow().date()
+            start_date = end_date - timedelta(days=days-1)
         
         # Run verification
         results = verification_service.verify_date_range(start_date, end_date)
