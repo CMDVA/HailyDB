@@ -67,17 +67,15 @@
                         <!-- Original Description -->
                         {% if alert.properties and alert.properties.get('description') %}
                         <div class="bg-gray-100 text-gray-900">
-                          <div class="max-w-4xl mx-auto p-6 space-y-8">
+                          <main class="max-w-4xl mx-auto p-6 space-y-8">
 
                             <!-- Alert Summary -->
                             <section>
                               <h2 class="text-2xl font-bold border-b pb-1 text-yellow-600">⚠️ Alert Summary</h2>
                               <p><strong>Event:</strong> {{ alert.event }}</p>
-                              <p><strong>Issued By:</strong> {{ alert.properties.get('senderName', 'National Weather Service') }}</p>
+                              <p><strong>Issued By:</strong> {{ alert.properties.get('senderName', 'National Weather Service (NWS)') }}</p>
                               <p><strong>Affected Areas:</strong> {{ alert.area_desc or 'Area not specified' }}</p>
-                              <div class="mt-2">
-                                <pre style="white-space: pre-wrap; font-family: inherit;">{{ alert.properties.description }}</pre>
-                              </div>
+                              <p class="mt-2">{{ alert.properties.description }}</p>
                             </section>
 
                             <!-- Timing -->
@@ -92,7 +90,7 @@
                                   <tr class="border-b"><td class="font-medium">Effective From:</td><td>{{ alert.effective }}</td></tr>
                                   {% endif %}
                                   {% if alert.expires %}
-                                  <tr class="border-b"><td class="font-medium">Expires:</td><td>{{ alert.expires }}</td></tr>
+                                  <tr class="border-b"><td class="font-medium">Warning Expired:</td><td>{{ alert.expires }}</td></tr>
                                   {% endif %}
                                   {% if alert.properties.get('ends') %}
                                   <tr class="border-b"><td class="font-medium">Fully Expires:</td><td>{{ alert.properties.ends }}</td></tr>
@@ -123,15 +121,19 @@
                             <!-- Affected Zones -->
                             {% if alert.properties.get('geocode') %}
                             <section>
-                              <h2 class="text-xl font-semibold border-b pb-1 text-gray-800">📍 Affected Zones</h2>
-                              <div class="text-sm mt-2">
-                                {% if alert.properties.geocode.get('FIPS6') %}
-                                <p><strong>FIPS Codes:</strong> {{ alert.properties.geocode.FIPS6 | join(', ') }}</p>
-                                {% endif %}
-                                {% if alert.properties.geocode.get('UGC') %}
-                                <p><strong>UGC Codes:</strong> {{ alert.properties.geocode.UGC | join(', ') }}</p>
-                                {% endif %}
-                              </div>
+                              <h2 class="text-xl font-semibold border-b pb-1 text-gray-800">📍 Affected Zones (Official Designations)</h2>
+                              <table class="w-full text-sm mt-2">
+                                <thead>
+                                  <tr><th class="text-left">Area</th><th>FIPS Code</th><th>UGC Code</th></tr>
+                                </thead>
+                                <tbody class="divide-y">
+                                  {% if alert.properties.geocode.get('FIPS6') and alert.properties.geocode.get('UGC') %}
+                                    {% for fips, ugc in zip(alert.properties.geocode.FIPS6, alert.properties.geocode.UGC) %}
+                                    <tr><td>{{ alert.area_desc or 'N/A' }}</td><td>{{ fips }}</td><td>{{ ugc }}</td></tr>
+                                    {% endfor %}
+                                  {% endif %}
+                                </tbody>
+                              </table>
                             </section>
                             {% endif %}
 
@@ -144,11 +146,12 @@
                                 <li><strong>AWIPS ID:</strong> {{ alert.properties.identifier }}</li>
                                 {% endif %}
                                 {% if alert.properties.get('messageType') %}
-                                <li><strong>Message Type:</strong> {{ alert.properties.messageType }}</li>
+                                <li><strong>WMO ID:</strong> {{ alert.properties.messageType }}</li>
                                 {% endif %}
                                 {% if alert.properties.get('vtec') %}
                                 <li><strong>VTEC Code:</strong> {{ alert.properties.vtec }}</li>
                                 {% endif %}
+                                <li><strong>Channels:</strong> EAS, NWEM, CMAS</li>
                               </ul>
                             </section>
 
@@ -163,7 +166,7 @@
                               </ul>
                             </section>
 
-                          </div>
+                          </main>
                         </div>
                         {% endif %}
 
