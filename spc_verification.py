@@ -155,21 +155,39 @@ class SPCVerificationService:
         from app import db
         
         try:
-            # Count existing reports
-            existing_count = SPCReport.query.filter(SPCReport.report_date == check_date).count()
+            # Force delete using raw SQL to bypass any ORM session caching issues
+            from sqlalchemy import text
             
-            # Delete existing reports in a separate transaction
-            if existing_count > 0:
-                deleted_count = SPCReport.query.filter(SPCReport.report_date == check_date).delete()
-                db.session.commit()
-                logger.info(f"Deleted {deleted_count} existing SPC reports for {check_date}")
+            # Count existing reports first
+            count_result = db.session.execute(
+                text("SELECT COUNT(*) FROM spc_reports WHERE report_date = :date"),
+                {"date": check_date}
+            ).scalar()
+            existing_count = count_result or 0
             
-            # Also clear any existing ingestion logs for this date to avoid confusion
-            SPCIngestionLog.query.filter(SPCIngestionLog.report_date == check_date).delete()
+            # Force delete with raw SQL and immediate commit
+            delete_result = db.session.execute(
+                text("DELETE FROM spc_reports WHERE report_date = :date"),
+                {"date": check_date}
+            )
+            deleted_count = delete_result.rowcount
+            
+            # Also clear ingestion logs
+            db.session.execute(
+                text("DELETE FROM spc_ingestion_logs WHERE report_date = :date"),
+                {"date": check_date}
+            )
+            
+            # Commit deletions immediately
             db.session.commit()
+            logger.info(f"Force deleted {deleted_count} existing SPC reports for {check_date}")
+            
+            # Create a completely fresh session for ingestion
+            db.session.close()
+            from app import db as fresh_db
             
             # Now re-ingest the data with fresh session
-            spc_ingester = SPCIngestService(db.session)
+            spc_ingester = SPCIngestService(fresh_db.session)
             result = spc_ingester.poll_spc_reports(check_date)
             
             return {
