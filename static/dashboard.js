@@ -388,7 +388,7 @@ async function loadSPCVerificationTable() {
         
         // Check if table already exists (preserve existing data)
         const existingTable = container.querySelector('table');
-        if (existingTable) {
+        if (existingTable && !window.loadingNextWeek) {
             console.log('SPC verification table already exists - preserving existing data');
             return;
         }
@@ -453,6 +453,8 @@ async function loadSPCVerificationTable() {
 // Load next week of SPC verification data
 async function loadNextWeek() {
     try {
+        // Temporarily disable auto-refresh to prevent interference
+        window.loadingNextWeek = true;
         // Find the oldest date in the current table
         const container = document.getElementById('todays-spc-events');
         const tableRows = container.querySelectorAll('tbody tr');
@@ -508,7 +510,7 @@ async function loadNextWeek() {
         
         console.log('API Response:', data);
         
-        if (data.status === 'success' && data.results && data.results.length > 0) {
+        if (data.results && data.results.length > 0) {
             console.log('Results received:', data.results.length);
             // Get the current table body
             const tbody = container.querySelector('tbody');
@@ -569,6 +571,9 @@ async function loadNextWeek() {
         const loading = document.getElementById('loading-indicator');
         if (loading) loading.remove();
         alert('Error loading next week data: ' + error.message);
+    } finally {
+        // Re-enable auto-refresh
+        window.loadingNextWeek = false;
     }
 }
 
@@ -860,7 +865,7 @@ async function forceReingestion(date, buttonElement) {
             // Refresh the SPC events data after a short delay
             setTimeout(() => {
                 console.log(`[SPC REIMPORT] Refreshing SPC events data...`);
-                loadTodaysSPCEvents();
+                loadSPCVerificationTable();
             }, 1500);
             
         } else {
