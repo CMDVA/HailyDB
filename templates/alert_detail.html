@@ -66,11 +66,104 @@
 
                         <!-- Original Description -->
                         {% if alert.properties and alert.properties.get('description') %}
-                        <div class="original-description">
-                            <h5 class="text-muted mb-2">Official Description</h5>
-                            <div class="alert alert-light">
-                                <pre class="mb-0" style="white-space: pre-wrap; font-family: inherit;">{{ alert.properties.description }}</pre>
-                            </div>
+                        <div class="bg-gray-100 text-gray-900">
+                          <div class="max-w-4xl mx-auto p-6 space-y-8">
+
+                            <!-- Alert Summary -->
+                            <section>
+                              <h2 class="text-2xl font-bold border-b pb-1 text-yellow-600">⚠️ Alert Summary</h2>
+                              <p><strong>Event:</strong> {{ alert.event }}</p>
+                              <p><strong>Issued By:</strong> {{ alert.properties.get('senderName', 'National Weather Service') }}</p>
+                              <p><strong>Affected Areas:</strong> {{ alert.area_desc or 'Area not specified' }}</p>
+                              <div class="mt-2">
+                                <pre style="white-space: pre-wrap; font-family: inherit;">{{ alert.properties.description }}</pre>
+                              </div>
+                            </section>
+
+                            <!-- Timing -->
+                            <section>
+                              <h2 class="text-xl font-semibold border-b pb-1 text-gray-800">📅 Timing</h2>
+                              <table class="w-full mt-2 text-sm">
+                                <tbody>
+                                  {% if alert.properties.get('sent') %}
+                                  <tr class="border-b"><td class="font-medium w-1/3">Alert Issued:</td><td>{{ alert.properties.sent }}</td></tr>
+                                  {% endif %}
+                                  {% if alert.effective %}
+                                  <tr class="border-b"><td class="font-medium">Effective From:</td><td>{{ alert.effective }}</td></tr>
+                                  {% endif %}
+                                  {% if alert.expires %}
+                                  <tr class="border-b"><td class="font-medium">Expires:</td><td>{{ alert.expires }}</td></tr>
+                                  {% endif %}
+                                  {% if alert.properties.get('ends') %}
+                                  <tr class="border-b"><td class="font-medium">Fully Expires:</td><td>{{ alert.properties.ends }}</td></tr>
+                                  {% endif %}
+                                </tbody>
+                              </table>
+                            </section>
+
+                            <!-- Storm Details -->
+                            <section>
+                              <h2 class="text-xl font-semibold border-b pb-1 text-gray-800">🌀 Storm Details</h2>
+                              <ul class="list-disc list-inside text-sm">
+                                {% if alert.event %}
+                                <li><strong>Type:</strong> {{ alert.event }}</li>
+                                {% endif %}
+                                {% if alert.severity %}
+                                <li><strong>Severity:</strong> {{ alert.severity }}</li>
+                                {% endif %}
+                                {% if alert.properties.get('certainty') %}
+                                <li><strong>Certainty:</strong> {{ alert.properties.certainty }}</li>
+                                {% endif %}
+                                {% if alert.properties.get('status') %}
+                                <li><strong>Status:</strong> {{ alert.properties.status }}</li>
+                                {% endif %}
+                              </ul>
+                            </section>
+
+                            <!-- Affected Zones -->
+                            {% if alert.properties.get('geocode') %}
+                            <section>
+                              <h2 class="text-xl font-semibold border-b pb-1 text-gray-800">📍 Affected Zones</h2>
+                              <div class="text-sm mt-2">
+                                {% if alert.properties.geocode.get('FIPS6') %}
+                                <p><strong>FIPS Codes:</strong> {{ alert.properties.geocode.FIPS6 | join(', ') }}</p>
+                                {% endif %}
+                                {% if alert.properties.geocode.get('UGC') %}
+                                <p><strong>UGC Codes:</strong> {{ alert.properties.geocode.UGC | join(', ') }}</p>
+                                {% endif %}
+                              </div>
+                            </section>
+                            {% endif %}
+
+                            <!-- Technical Metadata -->
+                            <section>
+                              <h2 class="text-xl font-semibold border-b pb-1 text-gray-800">📡 Technical Information</h2>
+                              <ul class="list-none text-xs mt-2 space-y-1">
+                                <li><strong>Alert ID:</strong> {{ alert.id }}</li>
+                                {% if alert.properties.get('identifier') %}
+                                <li><strong>AWIPS ID:</strong> {{ alert.properties.identifier }}</li>
+                                {% endif %}
+                                {% if alert.properties.get('messageType') %}
+                                <li><strong>Message Type:</strong> {{ alert.properties.messageType }}</li>
+                                {% endif %}
+                                {% if alert.properties.get('vtec') %}
+                                <li><strong>VTEC Code:</strong> {{ alert.properties.vtec }}</li>
+                                {% endif %}
+                              </ul>
+                            </section>
+
+                            <!-- Resources -->
+                            <section>
+                              <h2 class="text-xl font-semibold border-b pb-1 text-gray-800">🌐 Resources</h2>
+                              <ul class="list-disc list-inside text-blue-600 text-sm">
+                                <li><a href="http://www.weather.gov" class="underline">Official NWS Site</a></li>
+                                {% if alert.properties.get('@id') %}
+                                <li><a href="{{ alert.properties['@id'] }}" class="underline">Full Alert JSON</a></li>
+                                {% endif %}
+                              </ul>
+                            </section>
+
+                          </div>
                         </div>
                         {% endif %}
 

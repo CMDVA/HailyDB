@@ -1,0 +1,79 @@
+<body class="bg-gray-100 text-gray-900">
+  <main class="max-w-4xl mx-auto p-6 space-y-8">
+
+    <!-- Alert Summary -->
+    <section>
+      <h2 class="text-2xl font-bold border-b pb-1 text-yellow-600">⚠️ Alert Summary</h2>
+      <p><strong>Event:</strong> Severe Thunderstorm Warning</p>
+      <p><strong>Issued By:</strong> National Weather Service (NWS) Cheyenne, WY</p>
+      <p><strong>Affected Areas:</strong> Scotts Bluff, NE; Sioux, NE; Goshen, WY</p>
+      <p class="mt-2">The storm that triggered the warning has weakened and no longer meets severe criteria. The warning has <strong>expired</strong>, but <strong>gusty winds and heavy rain</strong> are still possible.</p>
+      <p class="mt-1"><strong>Ongoing Advisory:</strong> A Severe Thunderstorm Watch remains in effect until <strong>8:00 PM MDT</strong>.</p>
+    </section>
+
+    <!-- Timing -->
+    <section>
+      <h2 class="text-xl font-semibold border-b pb-1 text-gray-800">📅 Timing</h2>
+      <table class="w-full mt-2 text-sm">
+        <tbody>
+          <tr class="border-b"><td class="font-medium w-1/3">Alert Issued:</td><td>June 2, 2025 @ 6:12 PM MDT</td></tr>
+          <tr class="border-b"><td class="font-medium">Effective From:</td><td>June 2, 2025 @ 6:12 PM MDT</td></tr>
+          <tr class="border-b"><td class="font-medium">Warning Expired:</td><td>June 2, 2025 @ 6:15 PM MDT</td></tr>
+          <tr class="border-b"><td class="font-medium">Fully Expires:</td><td>June 2, 2025 @ 6:21 PM MDT</td></tr>
+          <tr><td class="font-medium">Storm Motion:</td><td>302° @ 30 knots</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- Storm Details -->
+    <section>
+      <h2 class="text-xl font-semibold border-b pb-1 text-gray-800">🌀 Storm Details</h2>
+      <ul class="list-disc list-inside text-sm">
+        <li><strong>Type:</strong> Thunderstorm</li>
+        <li><strong>Severity:</strong> Severe (initially)</li>
+        <li><strong>Certainty:</strong> Observed</li>
+        <li><strong>Status:</strong> Expired</li>
+        <li><strong>Hazards Remaining:</strong> Gusty winds, heavy rain</li>
+      </ul>
+      <p class="mt-2 text-sm"><strong>Storm Path Coordinates:</strong> Polygon with points at:<br>
+        NW (42.06, -104.21), NE (42.21, -104.08), SE (42.00, -103.57), SW (41.77, -103.74)</p>
+    </section>
+
+    <!-- Affected Zones -->
+    <section>
+      <h2 class="text-xl font-semibold border-b pb-1 text-gray-800">📍 Affected Zones (Official Designations)</h2>
+      <table class="w-full text-sm mt-2">
+        <thead>
+          <tr><th class="text-left">County</th><th>FIPS Code</th><th>NWS Zone Code</th></tr>
+        </thead>
+        <tbody class="divide-y">
+          <tr><td>Scotts Bluff, NE</td><td>031157</td><td>NEC157</td></tr>
+          <tr><td>Sioux, NE</td><td>031165</td><td>NEC165</td></tr>
+          <tr><td>Goshen, WY</td><td>056015</td><td>WYC015</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- Technical Metadata -->
+    <section>
+      <h2 class="text-xl font-semibold border-b pb-1 text-gray-800">📡 Technical Information</h2>
+      <ul class="list-none text-xs mt-2 space-y-1">
+        <li><strong>Alert ID:</strong> urn:oid:2.49...360733853d.001.1</li>
+        <li><strong>AWIPS ID:</strong> SVSCYS</li>
+        <li><strong>WMO ID:</strong> WWUS55 KCYS 030012</li>
+        <li><strong>VTEC Code:</strong> /O.EXP.KCYS.SV.W.0047.000000T0000Z-250603T0015Z/</li>
+        <li><strong>Channels:</strong> EAS, NWEM, CMAS</li>
+      </ul>
+    </section>
+
+    <!-- Resources -->
+    <section>
+      <h2 class="text-xl font-semibold border-b pb-1 text-gray-800">🌐 Resources</h2>
+      <ul class="list-disc list-inside text-blue-600 text-sm">
+        <li><a href="http://www.weather.gov" class="underline">Official NWS Site</a></li>
+        <li><a href="https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.1693bbfa49f4b85e3376830f296821360733853d.001.1" class="underline">Full Alert JSON</a></li>
+      </ul>
+    </section>
+
+  </main>
+</body>
