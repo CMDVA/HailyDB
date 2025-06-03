@@ -97,30 +97,30 @@ class SPCVerificationService:
     def _count_reports_in_csv(self, csv_content: str) -> int:
         """
         Count total reports in SPC CSV content
-        Skips header lines and counts data lines across all sections
+        Properly handles the 3-section format: tornado, wind, hail
         """
         lines = csv_content.strip().split('\n')
         total_count = 0
         
-        for line in lines:
+        for i, line in enumerate(lines):
             line = line.strip()
             
             # Skip empty lines
             if not line:
                 continue
                 
-            # Skip header lines (contain section names or column headers)
-            if any(header in line.upper() for header in [
-                'TORNADO', 'WIND', 'HAIL', 'TIME', 'LOCATION', 'COUNTY', 'STATE'
-            ]):
+            # Skip header lines that start with "Time," (column headers)
+            if line.startswith('Time,'):
                 continue
                 
-            # Skip lines that start with non-numeric characters (likely headers)
-            if line and not line[0].isdigit():
-                continue
-                
-            # Count valid data lines
-            total_count += 1
+            # Check if this is a data line by looking for time format (4 digits) at start
+            if ',' in line:
+                fields = line.split(',')
+                if len(fields) >= 6:  # All sections have at least 6 columns
+                    first_field = fields[0].strip()
+                    # Valid data lines start with 4-digit time (like "2037", "1700", etc.)
+                    if first_field.isdigit() and len(first_field) == 4:
+                        total_count += 1
             
         return total_count
     
