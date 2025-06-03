@@ -311,6 +311,32 @@ def enrich_alert(alert_id):
     
     return redirect(url_for('get_alert', alert_id=alert_id))
 
+@app.route('/api/alerts/enrich-batch', methods=['POST'])
+def enrich_batch():
+    """Enrich a batch of unenriched alerts"""
+    try:
+        limit = request.json.get('limit', 50) if request.json else 50
+        limit = min(limit, 100)  # Cap at 100 for safety
+        
+        logger.info(f"Starting batch enrichment for up to {limit} alerts")
+        
+        result = enrich_service.enrich_batch(limit)
+        
+        return jsonify({
+            'status': 'success',
+            'enriched': result['enriched'],
+            'failed': result['failed'],
+            'total_processed': result['total_processed'],
+            'message': f"Successfully enriched {result['enriched']} alerts"
+        })
+        
+    except Exception as e:
+        logger.error(f"Error during batch enrichment: {e}")
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
 # Internal/Admin Routes
 @app.route('/internal/status')
 def internal_status():

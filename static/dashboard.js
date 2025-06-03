@@ -366,8 +366,24 @@ async function enrichBatch() {
         button.disabled = true;
         button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Enriching...';
         
-        // This would require a new endpoint - for now, show a placeholder
-        showNotification('Batch enrichment feature coming soon!', 'info');
+        const response = await fetch('/api/alerts/enrich-batch', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ limit: 50 })
+        });
+        
+        const result = await response.json();
+        
+        if (result.status === 'success') {
+            showNotification(`Batch enrichment completed! ${result.enriched} alerts enriched, ${result.failed} failed.`, 'success');
+            setTimeout(() => {
+                refreshDashboard();
+            }, 2000);
+        } else {
+            showNotification(`Batch enrichment failed: ${result.message}`, 'error');
+        }
         
     } catch (error) {
         console.error('Error enriching batch:', error);
