@@ -78,17 +78,14 @@ function updateNextPollTime() {
 async function loadTodaysAlerts() {
     try {
         const today = new Date().toISOString().split('T')[0];
-        const response = await fetch(`/alerts?format=json&per_page=200&effective_date=${today}`);
+        const response = await fetch(`/alerts?format=json&per_page=500&effective_date=${today}`);
         const data = await response.json();
         
         const tableContainer = document.getElementById('todays-alerts-table');
         if (!tableContainer) return;
         
-        // Filter to today's alerts based on effective date
-        const todaysAlerts = data.alerts ? data.alerts.filter(alert => {
-            const alertDate = new Date(alert.effective).toISOString().split('T')[0];
-            return alertDate === today;
-        }) : [];
+        // Use alerts directly from API response (already filtered by effective_date parameter)
+        const todaysAlerts = data.alerts || [];
         
         if (todaysAlerts.length > 0) {
             // Group by event type for compact breakdown

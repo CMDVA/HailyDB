@@ -77,9 +77,10 @@ def get_alerts():
     state = request.args.get('state')
     county = request.args.get('county')
     area = request.args.get('area')
+    effective_date = request.args.get('effective_date')
     active_only = request.args.get('active_only', 'false').lower() == 'true'
     
-    query = Alert.query.order_by(Alert.ingested_at.desc())
+    query = Alert.query.order_by(Alert.effective.desc())
     
     if severity:
         query = query.filter(Alert.severity == severity)
@@ -91,6 +92,13 @@ def get_alerts():
         query = query.filter(Alert.area_desc.ilike(f'%{county}%'))
     if area:
         query = query.filter(Alert.area_desc.ilike(f'%{area}%'))
+    if effective_date:
+        from datetime import datetime
+        try:
+            filter_date = datetime.strptime(effective_date, '%Y-%m-%d').date()
+            query = query.filter(db.func.date(Alert.effective) == filter_date)
+        except ValueError:
+            pass  # Invalid date format, ignore filter
     if active_only:
         from datetime import datetime
         now = datetime.utcnow()
