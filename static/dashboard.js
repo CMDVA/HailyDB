@@ -451,6 +451,105 @@ async function loadSPCVerificationTable() {
 }
 
 // Load next week of SPC verification data
+async function refreshSPCVerificationData() {
+    console.log('[REFRESH] Reloading verification data after re-ingestion...');
+    
+    try {
+        // Get current date range from existing table
+        const container = document.getElementById('spc-verification');
+        if (!container) {
+            console.error('[REFRESH] SPC verification container not found');
+            return;
+        }
+        
+        const tbody = container.querySelector('tbody');
+        if (!tbody) {
+            console.error('[REFRESH] Table body not found');
+            return;
+        }
+        
+        // Get existing date range
+        const rows = tbody.querySelectorAll('tr');
+        if (rows.length === 0) {
+            console.log('[REFRESH] No existing rows to refresh');
+            return;
+        }
+        
+        const dates = Array.from(rows).map(row => {
+            const firstCell = row.querySelector('td');
+            return firstCell ? firstCell.textContent.trim() : null;
+        }).filter(date => date);
+        
+        if (dates.length === 0) {
+            console.log('[REFRESH] No valid dates found');
+            return;
+        }
+        
+        // Sort dates to get range
+        dates.sort();
+        const startDate = dates[0];
+        const endDate = dates[dates.length - 1];
+        
+        console.log(`[REFRESH] Refreshing data from ${startDate} to ${endDate}`);
+        
+        // Fetch fresh verification data
+        const response = await fetch(`/internal/spc-verify?start_date=${startDate}&end_date=${endDate}`);
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('[REFRESH] Fresh verification data received:', data);
+        
+        if (data.results && data.results.length > 0) {
+            // Clear existing table and rebuild with fresh data
+            tbody.innerHTML = '';
+            
+            // Sort results by date (newest first)
+            data.results.sort((a, b) => new Date(b.date) - new Date(a.date));
+            
+            // Add all rows with fresh data
+            data.results.forEach(result => {
+                const statusBadge = result.match_status === 'MATCH' 
+                    ? '<span class="badge bg-success">MATCH</span>'
+                    : result.match_status === 'MISMATCH'
+                    ? '<span class="badge bg-danger">MISMATCH</span>'
+                    : result.match_status === 'SPC_UNAVAILABLE'
+                    ? '<span class="badge bg-warning">SPC_UNAVAILABLE</span>'
+                    : '<span class="badge bg-secondary">PENDING</span>';
+                
+                const spcCount = result.spc_live_count !== null ? result.spc_live_count : 'N/A';
+                const reuploadButton = result.match_status === 'MISMATCH' ? 
+                    `<button class="btn btn-xs btn-outline-warning" onclick="forceReingestion('${result.date}', this)">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>` : 
+                    '<span class="text-muted">-</span>';
+                
+                const newRow = document.createElement('tr');
+                newRow.innerHTML = `
+                    <td>${result.date}</td>
+                    <td>${result.hailydb_count}</td>
+                    <td>${spcCount}</td>
+                    <td>${statusBadge}</td>
+                    <td>${reuploadButton}</td>
+                `;
+                tbody.appendChild(newRow);
+            });
+            
+            // Update timestamp
+            const timestampElement = container.querySelector('.text-muted');
+            if (timestampElement) {
+                timestampElement.textContent = `Last verified: ${new Date().toLocaleTimeString()}`;
+            }
+            
+            console.log(`[REFRESH] Successfully refreshed ${data.results.length} verification records`);
+        }
+        
+    } catch (error) {
+        console.error('[REFRESH] Error refreshing verification data:', error);
+    }
+}
+
 async function loadNextWeek() {
     try {
         // Temporarily disable auto-refresh to prevent interference
@@ -868,7 +967,7 @@ async function forceReingestion(date, buttonElement) {
             // Refresh the SPC events data after a short delay
             setTimeout(() => {
                 console.log(`[SPC REIMPORT] Refreshing SPC events data...`);
-                loadSPCVerificationTable();
+                refreshSPCVerificationData();
             }, 1500);
             
         } else {
