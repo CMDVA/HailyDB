@@ -1328,7 +1328,7 @@ async function forceReingestion(date, buttonElement) {
 async function startAutonomousScheduler() {
     try {
         showIngestionProgress('Starting NWS scheduler...', 30);
-        const response = await fetch('/internal/start-autonomous-scheduler', {
+        const response = await fetch('/internal/scheduler/start', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -1357,7 +1357,7 @@ async function startAutonomousScheduler() {
 async function stopAutonomousScheduler() {
     try {
         showIngestionProgress('Stopping NWS scheduler...', 30);
-        const response = await fetch('/internal/stop-autonomous-scheduler', {
+        const response = await fetch('/internal/scheduler/stop', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -1385,7 +1385,7 @@ async function stopAutonomousScheduler() {
 // Update scheduler status and countdown displays
 async function updateSchedulerStatus() {
     try {
-        const response = await fetch('/internal/autonomous-scheduler-status');
+        const response = await fetch('/internal/scheduler/status');
         const data = await response.json();
         
         if (data.success) {
