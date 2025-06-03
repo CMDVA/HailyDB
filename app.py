@@ -341,6 +341,82 @@ def enrich_batch():
             'message': str(e)
         }), 500
 
+@app.route('/api/spc/reports')
+def get_spc_reports():
+    """Get SPC storm reports with filtering"""
+    try:
+        # Get query parameters
+        report_type = request.args.get('type')  # tornado, wind, hail
+        state = request.args.get('state')
+        county = request.args.get('county')
+        date = request.args.get('date')  # YYYY-MM-DD format
+        limit = min(int(request.args.get('limit', 100)), 500)
+        offset = int(request.args.get('offset', 0))
+        
+        # Build query
+        query = SPCReport.query
+        
+        if report_type:
+            query = query.filter(SPCReport.report_type == report_type)
+        if state:
+            query = query.filter(SPCReport.state == state.upper())
+        if county:
+            query = query.filter(SPCReport.county.ilike(f'%{county}%'))
+        if date:
+            query = query.filter(SPCReport.report_date == date)
+        
+        # Get total count for pagination
+        total_count = query.count()
+        
+        # Get results with pagination
+        reports = query.order_by(SPCReport.report_date.desc(), SPCReport.time_utc.desc()).limit(limit).offset(offset).all()
+        
+        return jsonify({
+            'reports': [report.to_dict() for report in reports],
+            'pagination': {
+                'total': total_count,
+                'limit': limit,
+                'offset': offset,
+                'has_more': offset + limit < total_count
+            },
+            'filters': {
+                'type': report_type,
+                'state': state,
+                'county': county,
+                'date': date
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting SPC reports: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/spc/reports')
+def view_spc_reports():
+    """View SPC reports in web interface"""
+    try:
+        # Get recent reports for display
+        reports = SPCReport.query.order_by(
+            SPCReport.report_date.desc(), 
+            SPCReport.time_utc.desc()
+        ).limit(50).all()
+        
+        # Get summary stats
+        total_reports = SPCReport.query.count()
+        type_counts = db.session.query(
+            SPCReport.report_type,
+            func.count(SPCReport.id).label('count')
+        ).group_by(SPCReport.report_type).all()
+        
+        return render_template('spc_reports.html', 
+                             reports=reports,
+                             total_reports=total_reports,
+                             type_counts={row.report_type: row.count for row in type_counts})
+        
+    except Exception as e:
+        logger.error(f"Error viewing SPC reports: {e}")
+        return render_template('error.html', error=str(e))
+
 # Internal/Admin Routes
 @app.route('/internal/status')
 def internal_status():
