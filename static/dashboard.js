@@ -171,45 +171,42 @@ async function loadTodaysSPCEvents() {
             return report.report_date === today;
         }) : [];
         
-        if (todaysEvents.length > 0) {
-            // Group by type
-            const eventsByType = todaysEvents.reduce((acc, event) => {
-                acc[event.report_type] = (acc[event.report_type] || 0) + 1;
-                return acc;
-            }, {});
+        // Get verification data
+        const verifyResponse = await fetch(`/internal/spc-verify-today`);
+        const verifyData = await verifyResponse.json();
+        
+        if (verifyData.status === 'success') {
+            const hailyCount = verifyData.hailydb_count;
+            const spcCount = verifyData.spc_live_count;
+            const isMatch = verifyData.match_status === 'MATCH';
             
-            let html = `<div class="mb-2"><strong>${todaysEvents.length} SPC events today</strong></div>`;
-            html += '<div class="row text-center mb-2">';
+            let html = `<div class="row text-center mb-3">`;
+            html += `<div class="col-md-4">`;
+            html += `<div class="h4 text-primary">${hailyCount}</div>`;
+            html += `<small class="text-muted">HailyDB Count</small>`;
+            html += `</div>`;
+            html += `<div class="col-md-4">`;
+            html += `<div class="h4 text-secondary">${spcCount}</div>`;
+            html += `<small class="text-muted">SPC Live Count</small>`;
+            html += `</div>`;
+            html += `<div class="col-md-4">`;
+            if (isMatch) {
+                html += `<div class="h4 text-success">MATCH</div>`;
+                html += `<small class="text-success">Data integrity verified</small>`;
+            } else {
+                html += `<div class="h4 text-danger">MISMATCH</div>`;
+                html += `<small class="text-danger">Data sync issue detected</small>`;
+            }
+            html += `</div>`;
+            html += `</div>`;
             
-            // Always show all three types with 0 if none
-            const tornado = eventsByType.tornado || 0;
-            const wind = eventsByType.wind || 0;
-            const hail = eventsByType.hail || 0;
-            
-            html += `<div class="col-4"><div class="h6 text-danger">${tornado}</div><small>Tornado</small></div>`;
-            html += `<div class="col-4"><div class="h6 text-warning">${wind}</div><small>Wind</small></div>`;
-            html += `<div class="col-4"><div class="h6 text-info">${hail}</div><small>Hail</small></div>`;
-            
-            html += '</div>';
-            
-            // Show recent events by location (compact)
-            if (todaysEvents.length > 0) {
-                html += '<div class="small">';
-                todaysEvents.slice(0, 5).forEach(event => {
-                    const location = event.location || `${event.county}, ${event.state}`;
-                    const typeIcon = event.report_type === 'tornado' ? '🌪️' : 
-                                   event.report_type === 'wind' ? '💨' : '🧊';
-                    html += `<div class="d-flex justify-content-between border-bottom py-1">
-                        <span>${typeIcon} ${location}</span>
-                        <span class="text-muted">${event.time_utc || ''}</span>
-                    </div>`;
-                });
-                html += '</div>';
+            if (verifyData.last_updated) {
+                html += `<div class="text-center"><small class="text-muted">Last verified: ${new Date(verifyData.last_updated).toLocaleTimeString()}</small></div>`;
             }
             
             container.innerHTML = html;
         } else {
-            container.innerHTML = '<div class="text-center py-3"><div class="h5 text-warning">0</div><small class="text-muted">No SPC events today</small></div>';
+            container.innerHTML = '<div class="text-center py-3"><div class="h5 text-warning">Error</div><small class="text-muted">Unable to verify SPC data</small></div>';
         }
     } catch (error) {
         console.error('Error loading today\'s SPC events:', error);
