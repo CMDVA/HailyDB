@@ -407,7 +407,7 @@ async function loadSPCVerificationTable() {
                     ? '<span class="badge bg-success">MATCH</span>'
                     : result.match_status === 'MISMATCH'
                     ? '<span class="badge bg-danger">MISMATCH</span>'
-                    : '<span class="badge bg-warning" title="SPC data not yet processed for this date">PENDING</span>';
+                    : '<span class="badge bg-warning">PENDING</span>';
                     
                 const spcCount = result.spc_live_count !== null ? result.spc_live_count : 'N/A';
                 
@@ -427,12 +427,6 @@ async function loadSPCVerificationTable() {
             });
             
             html += '</tbody></table></div>';
-            html += '<div class="mt-2 small text-muted">';
-            html += '<strong>Status Legend:</strong> ';
-            html += '<span class="badge bg-success me-1">MATCH</span>Data matches between sources, ';
-            html += '<span class="badge bg-danger me-1">MISMATCH</span>Data differs between sources, ';
-            html += '<span class="badge bg-warning me-1">PENDING</span>SPC data not yet processed for this date';
-            html += '</div>';
             
             if (verifyData.last_updated) {
                 html += `<div class="text-center mt-2">
