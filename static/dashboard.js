@@ -479,15 +479,52 @@ function changePage(page) {
     window.dashboardAlertsData.currentPage = page;
 }
 
-// SPC Scheduler Functions
+// NWS Scheduler Functions
+function onPlayNWSScheduler() {
+    onPlayScheduler();
+}
+
+function onPauseNWSScheduler() {
+    onPauseScheduler();
+}
+
+// SPC Scheduler Functions - Currently linked to main scheduler
+// TODO: Implement independent SPC scheduler controls
 function onPlaySPCScheduler() {
-    // Since SPC ingestion is part of the autonomous scheduler, we just start the main scheduler
+    // For now, SPC ingestion is part of the autonomous scheduler
     onPlayScheduler();
 }
 
 function onPauseSPCScheduler() {
-    // Since SPC ingestion is part of the autonomous scheduler, we just stop the main scheduler
+    // For now, SPC ingestion is part of the autonomous scheduler
     onPauseScheduler();
+}
+
+// Update NWS scheduler status
+function updateNWSSchedulerStatus(status) {
+    const nwsStatusElement = document.getElementById('nws-scheduler-status');
+    const nwsPlayBtn = document.getElementById('nws-scheduler-play-btn');
+    const nwsPauseBtn = document.getElementById('nws-scheduler-pause-btn');
+    const nwsCountdownDiv = document.getElementById('nws-next-ingestion-countdown');
+    
+    if (!nwsStatusElement) return;
+    
+    if (status.running) {
+        nwsStatusElement.innerHTML = '<i class="fas fa-play-circle me-1 text-success"></i>Running';
+        nwsPlayBtn.style.display = 'none';
+        nwsPauseBtn.style.display = 'inline-block';
+        nwsCountdownDiv.style.display = 'block';
+        
+        const nwsCountdownTimer = document.getElementById('nws-countdown-timer');
+        if (nwsCountdownTimer && status.next_nws_poll) {
+            nwsCountdownTimer.textContent = status.next_nws_poll;
+        }
+    } else {
+        nwsStatusElement.innerHTML = '<i class="fas fa-stop-circle me-1"></i>Stopped';
+        nwsPlayBtn.style.display = 'inline-block';
+        nwsPauseBtn.style.display = 'none';
+        nwsCountdownDiv.style.display = 'none';
+    }
 }
 
 // Update SPC scheduler status based on main scheduler status
