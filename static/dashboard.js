@@ -96,53 +96,130 @@ async function loadTodaysAlerts() {
                 return acc;
             }, {});
             
-            let html = `<div class="mb-2"><strong>${todaysAlerts.length} alerts ingested today</strong></div>`;
-            html += '<div class="row text-center mb-2">';
+            let html = `<div class="mb-3"><strong>${todaysAlerts.length} alerts ingested today</strong></div>`;
             
-            // Show top alert types (prioritize important weather events)
-            const priorityTypes = [
-                'Flash Flood Warning',
-                'Flood Advisory', 
-                'Flood Warning',
-                'Flood Watch',
-                'Severe Thunderstorm Warning',
-                'Severe Thunderstorm Watch',
-                'Special Weather Statement',
-                'Storm Warning',
-                'Wind Advisory'
-            ];
-            const sortedTypes = Object.entries(alertsByType)
-                .sort((a, b) => {
-                    // Prioritize important weather events
-                    const aPriority = priorityTypes.includes(a[0]) ? 0 : 1;
-                    const bPriority = priorityTypes.includes(b[0]) ? 0 : 1;
-                    if (aPriority !== bPriority) return aPriority - bPriority;
-                    return b[1] - a[1]; // Then by count
-                })
-                .slice(0, 6);
+            // NWS Alert Category mapping
+            const alertCategories = {
+                'Tornado Watch': 'Severe Weather Alert',
+                'Tornado Warning': 'Severe Weather Alert',
+                'Severe Thunderstorm Watch': 'Severe Weather Alert',
+                'Severe Thunderstorm Warning': 'Severe Weather Alert',
+                'Severe Weather Statement': 'Severe Weather Alert',
+                'Extreme Wind Warning': 'Severe Weather Alert',
+                'Snow Squall Warning': 'Severe Weather Alert',
+                'Winter Storm Watch': 'Winter Weather Alert',
+                'Winter Storm Warning': 'Winter Weather Alert',
+                'Blizzard Warning': 'Winter Weather Alert',
+                'Ice Storm Warning': 'Winter Weather Alert',
+                'Winter Weather Advisory': 'Winter Weather Alert',
+                'Freezing Rain Advisory': 'Winter Weather Alert',
+                'Wind Chill Advisory': 'Winter Weather Alert',
+                'Wind Chill Warning': 'Winter Weather Alert',
+                'Frost Advisory': 'Winter Weather Alert',
+                'Freeze Warning': 'Winter Weather Alert',
+                'Flood Watch': 'Flood Alert',
+                'Flood Warning': 'Flood Alert',
+                'Flash Flood Watch': 'Flood Alert',
+                'Flash Flood Warning': 'Flood Alert',
+                'Flood Advisory': 'Flood Alert',
+                'Coastal Flood Watch': 'Coastal Alert',
+                'Coastal Flood Warning': 'Coastal Alert',
+                'Coastal Flood Advisory': 'Coastal Alert',
+                'Lakeshore Flood Watch': 'Coastal Alert',
+                'Lakeshore Flood Warning': 'Coastal Alert',
+                'Lakeshore Flood Advisory': 'Coastal Alert',
+                'High Wind Watch': 'Wind & Fog Alert',
+                'High Wind Warning': 'Wind & Fog Alert',
+                'Wind Advisory': 'Wind & Fog Alert',
+                'Dense Fog Advisory': 'Wind & Fog Alert',
+                'Freezing Fog Advisory': 'Wind & Fog Alert',
+                'Fire Weather Watch': 'Fire Weather Alert',
+                'Red Flag Warning': 'Fire Weather Alert',
+                'Air Quality Alert': 'Air Quality & Dust Alert',
+                'Air Stagnation Advisory': 'Air Quality & Dust Alert',
+                'Blowing Dust Advisory': 'Air Quality & Dust Alert',
+                'Dust Storm Warning': 'Air Quality & Dust Alert',
+                'Ashfall Advisory': 'Air Quality & Dust Alert',
+                'Ashfall Warning': 'Air Quality & Dust Alert',
+                'Small Craft Advisory': 'Marine Alert',
+                'Gale Watch': 'Marine Alert',
+                'Gale Warning': 'Marine Alert',
+                'Storm Watch': 'Marine Alert',
+                'Storm Warning': 'Marine Alert',
+                'Hurricane Force Wind Warning': 'Marine Alert',
+                'Special Marine Warning': 'Marine Alert',
+                'Low Water Advisory': 'Marine Alert',
+                'Brisk Wind Advisory': 'Marine Alert',
+                'Marine Weather Statement': 'Marine Alert',
+                'Hazardous Seas Warning': 'Marine Alert',
+                'Tropical Storm Watch': 'Tropical Weather Alert',
+                'Tropical Storm Warning': 'Tropical Weather Alert',
+                'Hurricane Watch': 'Tropical Weather Alert',
+                'Hurricane Warning': 'Tropical Weather Alert',
+                'Storm Surge Watch': 'Tropical Weather Alert',
+                'Storm Surge Warning': 'Tropical Weather Alert',
+                'Tsunami Watch': 'Tsunami Alert',
+                'Tsunami Advisory': 'Tsunami Alert',
+                'Tsunami Warning': 'Tsunami Alert',
+                'Special Weather Statement': 'General Weather Info',
+                'Hazardous Weather Outlook': 'General Weather Info',
+                'Short Term Forecast': 'General Weather Info',
+                'Public Information Statement': 'General Weather Info',
+                'Administrative Message': 'General Weather Info',
+                'Test Message': 'General Weather Info',
+                'Beach Hazards Statement': 'Coastal Alert'
+            };
             
-            sortedTypes.forEach(([type, count]) => {
-                let shortType = type;
-                
-                // Specific abbreviations for weather alert types
-                if (type === 'Severe Thunderstorm Warning') shortType = 'Thunderstorm Warning';
-                else if (type === 'Severe Thunderstorm Watch') shortType = 'Thunderstorm Watch';
-                else if (type === 'Flash Flood Warning') shortType = 'Flash Flood';
-                else if (type === 'Flood Warning') shortType = 'Flood';
-                else if (type === 'Flood Advisory') shortType = 'Flood Advisory';
-                else if (type === 'Special Weather Statement') shortType = 'Special Weather';
-                else if (type === 'Small Craft Advisory') shortType = 'Small Craft';
-                else if (type === 'Wind Advisory') shortType = 'Wind Advisory';
-                else if (type === 'Storm Warning') shortType = 'Storm Warning';
-                else if (type.length > 15) {
-                    // Generic shortening for other long types
-                    shortType = type.replace(' Warning', '').replace(' Watch', '').replace(' Advisory', '');
+            // Group alerts by category
+            const alertsByCategory = {};
+            Object.entries(alertsByType).forEach(([alertType, count]) => {
+                const category = alertCategories[alertType] || 'Other Alerts';
+                if (!alertsByCategory[category]) {
+                    alertsByCategory[category] = [];
                 }
-                
-                html += `<div class="col-2"><div class="h6 text-primary">${count}</div><small>${shortType}</small></div>`;
+                alertsByCategory[category].push([alertType, count]);
             });
             
-            html += '</div>';
+            // Create comprehensive table
+            html += '<div class="table-responsive mb-3">';
+            html += '<table class="table table-sm table-striped">';
+            html += '<thead class="table-dark"><tr><th>Category</th><th>Alert Type</th><th class="text-end">Count</th></tr></thead><tbody>';
+            
+            // Sort categories and display
+            const categoryOrder = [
+                'Severe Weather Alert',
+                'Flood Alert', 
+                'Winter Weather Alert',
+                'Marine Alert',
+                'Wind & Fog Alert',
+                'Fire Weather Alert',
+                'Coastal Alert',
+                'Tropical Weather Alert',
+                'Air Quality & Dust Alert',
+                'Tsunami Alert',
+                'General Weather Info',
+                'Other Alerts'
+            ];
+            
+            categoryOrder.forEach(category => {
+                if (alertsByCategory[category]) {
+                    // Sort alerts within category by count descending
+                    alertsByCategory[category].sort((a, b) => b[1] - a[1]);
+                    
+                    alertsByCategory[category].forEach(([alertType, count], index) => {
+                        const categoryCell = index === 0 ? 
+                            `<td rowspan="${alertsByCategory[category].length}" class="align-middle"><strong>${category}</strong></td>` : '';
+                        
+                        html += `<tr>
+                            ${categoryCell}
+                            <td>${alertType}</td>
+                            <td class="text-end"><span class="badge bg-primary">${count}</span></td>
+                        </tr>`;
+                    });
+                }
+            });
+            
+            html += '</tbody></table></div>';
             
             // Show recent alerts with Date/Time | Severity | Type | Area format
             if (todaysAlerts.length > 0) {
