@@ -72,9 +72,9 @@ class SPCVerificationService:
         Returns total count across all report types (tornado, wind, hail)
         """
         try:
-            # Format date for SPC URL (YYMMDD)
+            # Format date for SPC URL (YYMMDD) - use filtered data to match ingestion
             date_str = check_date.strftime('%y%m%d')
-            url = f"{self.base_url}{date_str}_rpts.csv"
+            url = f"{self.base_url}{date_str}_rpts_filtered.csv"
             
             response = requests.get(url, timeout=30)
             if response.status_code == 404:

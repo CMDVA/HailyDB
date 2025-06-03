@@ -456,7 +456,7 @@ async function refreshSPCVerificationData() {
     
     try {
         // Get current date range from existing table
-        const container = document.getElementById('spc-verification');
+        const container = document.getElementById('todays-spc-events');
         if (!container) {
             console.error('[REFRESH] SPC verification container not found');
             return;

@@ -1,0 +1,34 @@
+Dashboard JavaScript loaded successfully
+Dashboard initialized successfully
+Loading previous week SPC data from 2025-05-21 to 2025-05-27
+API Response: 
+Object {date_range: {…}, results: Array(7), summary: {…}}
+Results received: 7
+Table body found: 
+<tbody>…</tbody>
+Existing dates: 
+(7) ["2025-06-03", "2025-06-02", "2025-06-01", "2025-05-31", "2025-05-30", "2025-05-29", "2025-05-28"]
+New results after filtering: 7 
+(7) [{…}, {…}, {…}, {…}, {…}, {…}, {…}]
+Added 7 new dates to the table
+[SPC REIMPORT] Starting re-ingestion for date: 2025-05-23
+[SPC REIMPORT] Button found: 
+<button class="btn btn-sm btn-success" onclick="forceReingestion('2025-05-23', this)" disabled>…</button>
+[SPC REIMPORT] Original content: 
+                                <i class="fas fa-sync-alt"></i>
+                            
+[SPC REIMPORT] Button set to loading state
+[SPC REIMPORT] Making POST request to: /internal/spc-reupload/2025-05-23
+[SPC REIMPORT] Response status: 200
+[SPC REIMPORT] Response headers: 
+Headers {append: ƒ, delete: ƒ, get: ƒ, getSetCookie: ƒ, has: ƒ, …}
+[SPC REIMPORT] Response body: 
+Object {date: "2025-05-23", message: "Re-uploaded SPC data for 2025-05-23 (replaced 0 existing reports)", reports_ingested: 84, reports_replaced: 0, success: true}
+[SPC REIMPORT] Success! Re-ingestion completed for 2025-05-23
+[SPC REIMPORT] Refreshing SPC events data...
+[REFRESH] Reloading verification data after re-ingestion...
+[REFRESH] SPC verification container not found
+at t.value (https://b39f3a59-cba9-411d-a929-796ce937d19e-00-armj78gt4vv9.worf.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:17465)
+at new t (https://b39f3a59-cba9-411d-a929-796ce937d19e-00-armj78gt4vv9.worf.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:12630)
+at t.value (https://b39f3a59-cba9-411d-a929-796ce937d19e-00-armj78gt4vv9.worf.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:32766)
+at https://b39f3a59-cba9-411d-a929-796ce937d19e-00-armj78gt4vv9.worf.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:34400
