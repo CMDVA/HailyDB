@@ -645,50 +645,62 @@ def spc_reupload(date_str):
 
 @app.route('/internal/spc-verify-today')
 def spc_verify_today():
-    """Get today's SPC verification data for dashboard"""
+    """Get recent SPC verification data for dashboard"""
     try:
-        from datetime import date
+        from datetime import date, timedelta
         import requests
         
         today = date.today()
         
-        # Get HailyDB count for today
-        hailydb_count = SPCReport.query.filter(SPCReport.report_date == today).count()
+        # Try today and previous days until we find SPC data
+        verification_results = []
         
-        # Get live SPC count by fetching the CSV and counting rows
-        date_str = today.strftime("%y%m%d")
-        url = f"https://www.spc.noaa.gov/climo/reports/{date_str}_rpts_filtered.csv"
-        
-        try:
-            response = requests.get(url, timeout=10)
-            response.raise_for_status()
+        for days_back in range(7):  # Check last 7 days
+            check_date = today - timedelta(days=days_back)
             
-            # Count total data rows (subtract 3 for headers as you specified)
-            lines = response.text.strip().split('\n')
-            total_lines = len(lines)
-            spc_live_count = max(0, total_lines - 3)  # Subtract 3 header lines
+            # Get HailyDB count for this date
+            hailydb_count = SPCReport.query.filter(SPCReport.report_date == check_date).count()
             
-        except requests.RequestException as e:
-            logger.warning(f"Could not fetch SPC data for verification: {e}")
-            spc_live_count = None
-        
-        # Determine match status
-        if spc_live_count is not None:
-            match_status = 'MATCH' if hailydb_count == spc_live_count else 'MISMATCH'
-        else:
-            match_status = 'UNKNOWN'
+            # Get live SPC count by fetching the CSV
+            date_str = check_date.strftime("%y%m%d")
+            url = f"https://www.spc.noaa.gov/climo/reports/{date_str}_rpts_filtered.csv"
+            
+            try:
+                response = requests.get(url, timeout=10)
+                response.raise_for_status()
+                
+                # Count total data rows (subtract 3 for headers)
+                lines = response.text.strip().split('\n')
+                total_lines = len(lines)
+                spc_live_count = max(0, total_lines - 3)
+                
+                match_status = 'MATCH' if hailydb_count == spc_live_count else 'MISMATCH'
+                
+                verification_results.append({
+                    'date': check_date.strftime('%Y-%m-%d'),
+                    'hailydb_count': hailydb_count,
+                    'spc_live_count': spc_live_count,
+                    'match_status': match_status
+                })
+                
+            except requests.RequestException:
+                # SPC file not available for this date
+                if hailydb_count > 0:
+                    verification_results.append({
+                        'date': check_date.strftime('%Y-%m-%d'),
+                        'hailydb_count': hailydb_count,
+                        'spc_live_count': None,
+                        'match_status': 'PENDING'
+                    })
         
         return jsonify({
             'status': 'success',
-            'date': today.strftime('%Y-%m-%d'),
-            'hailydb_count': hailydb_count,
-            'spc_live_count': spc_live_count,
-            'match_status': match_status,
+            'results': verification_results,
             'last_updated': datetime.utcnow().isoformat()
         })
         
     except Exception as e:
-        logger.error(f"Error in today's SPC verification: {e}")
+        logger.error(f"Error in SPC verification: {e}")
         return jsonify({
             'status': 'error',
             'error': str(e)

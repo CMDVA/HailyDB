@@ -171,37 +171,36 @@ async function loadTodaysSPCEvents() {
             return report.report_date === today;
         }) : [];
         
-        // Get verification data
+        // Get verification data (daily reports)
         const verifyResponse = await fetch(`/internal/spc-verify-today`);
         const verifyData = await verifyResponse.json();
         
-        if (verifyData.status === 'success') {
-            const hailyCount = verifyData.hailydb_count;
-            const spcCount = verifyData.spc_live_count;
-            const isMatch = verifyData.match_status === 'MATCH';
+        if (verifyData.status === 'success' && verifyData.results) {
+            let html = '<div class="table-responsive"><table class="table table-sm">';
+            html += '<thead><tr><th>Date</th><th>HailyDB</th><th>SPC Live</th><th>Status</th></tr></thead>';
+            html += '<tbody>';
             
-            let html = `<div class="row text-center mb-3">`;
-            html += `<div class="col-md-4">`;
-            html += `<div class="h4 text-primary">${hailyCount}</div>`;
-            html += `<small class="text-muted">HailyDB Count</small>`;
-            html += `</div>`;
-            html += `<div class="col-md-4">`;
-            html += `<div class="h4 text-secondary">${spcCount}</div>`;
-            html += `<small class="text-muted">SPC Live Count</small>`;
-            html += `</div>`;
-            html += `<div class="col-md-4">`;
-            if (isMatch) {
-                html += `<div class="h4 text-success">MATCH</div>`;
-                html += `<small class="text-success">Data integrity verified</small>`;
-            } else {
-                html += `<div class="h4 text-danger">MISMATCH</div>`;
-                html += `<small class="text-danger">Data sync issue detected</small>`;
-            }
-            html += `</div>`;
-            html += `</div>`;
+            verifyData.results.forEach(result => {
+                const statusBadge = result.match_status === 'MATCH' 
+                    ? '<span class="badge bg-success">MATCH</span>'
+                    : result.match_status === 'MISMATCH'
+                    ? '<span class="badge bg-danger">MISMATCH</span>'
+                    : '<span class="badge bg-warning">PENDING</span>';
+                    
+                const spcCount = result.spc_live_count !== null ? result.spc_live_count : 'N/A';
+                
+                html += `<tr>
+                    <td>${result.date}</td>
+                    <td><span class="badge bg-primary">${result.hailydb_count}</span></td>
+                    <td><span class="badge bg-secondary">${spcCount}</span></td>
+                    <td>${statusBadge}</td>
+                </tr>`;
+            });
+            
+            html += '</tbody></table></div>';
             
             if (verifyData.last_updated) {
-                html += `<div class="text-center"><small class="text-muted">Last verified: ${new Date(verifyData.last_updated).toLocaleTimeString()}</small></div>`;
+                html += `<div class="text-center mt-2"><small class="text-muted">Last verified: ${new Date(verifyData.last_updated).toLocaleTimeString()}</small></div>`;
             }
             
             container.innerHTML = html;
