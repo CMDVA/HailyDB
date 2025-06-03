@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}SPC Storm Reports{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">SPC Storm Reports</h1>
+        <a href="/internal/dashboard" class="btn btn-primary">
+            <i class="fas fa-arrow-left me-1"></i>Back to Dashboard
+        </a>
+    </div>
+
+    <!-- Summary Stats -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h5 class="card-title">Total Reports</h5>
+                    <h2 class="text-primary">{{ total_reports }}</h2>
+                </div>
+            </div>
+        </div>
+        {% for report_type, count in type_counts.items() %}
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <h5 class="card-title">{{ report_type.title() }}</h5>
+                    <h2 class="text-{% if report_type == 'tornado' %}danger{% elif report_type == 'wind' %}warning{% else %}info{% endif %}">{{ count }}</h2>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Recent Reports -->
+    <div class="card shadow">
+        <div class="card-header">
+            <h6 class="m-0 font-weight-bold text-primary">Recent Reports (Last 50)</h6>
+        </div>
+        <div class="card-body">
+            {% if reports %}
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Type</th>
+                            <th>Time</th>
+                            <th>Location</th>
+                            <th>State</th>
+                            <th>Comments</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for report in reports %}
+                        <tr>
+                            <td>{{ report.report_date }}</td>
+                            <td>
+                                <span class="badge bg-{% if report.report_type == 'tornado' %}danger{% elif report.report_type == 'wind' %}warning{% else %}info{% endif %}">
+                                    {{ report.report_type.title() }}
+                                </span>
+                            </td>
+                            <td>{{ report.time_utc or 'N/A' }}</td>
+                            <td>{{ report.location or (report.county + ', ' + report.state) if report.county and report.state else 'N/A' }}</td>
+                            <td>{{ report.state }}</td>
+                            <td>{{ report.comments[:100] + '...' if report.comments and report.comments|length > 100 else report.comments or 'N/A' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted">No SPC reports found.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

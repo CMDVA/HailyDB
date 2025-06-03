@@ -113,17 +113,27 @@ async function loadTodaysAlerts() {
             
             html += '</div>';
             
-            // Show recent alerts list (compact)
+            // Show recent alerts with Date/Time | Severity | Type | Area format
             if (todaysAlerts.length > 0) {
-                html += '<div class="small">';
+                html += '<div class="table-responsive"><table class="table table-sm small">';
+                html += '<thead><tr><th>Date/Time</th><th>Severity</th><th>Type</th><th>Area</th></tr></thead><tbody>';
+                
                 todaysAlerts.slice(0, 5).forEach(alert => {
-                    const time = new Date(alert.effective).toLocaleTimeString();
-                    html += `<div class="d-flex justify-content-between border-bottom py-1">
-                        <span>${alert.event}</span>
-                        <span class="text-muted">${time}</span>
-                    </div>`;
+                    const dateTime = new Date(alert.effective).toLocaleString();
+                    const severityBadge = getSeverityColor(alert.severity);
+                    const shortArea = alert.area_desc ? 
+                        (alert.area_desc.length > 30 ? alert.area_desc.substring(0, 30) + '...' : alert.area_desc) : 
+                        'N/A';
+                    
+                    html += `<tr>
+                        <td>${dateTime}</td>
+                        <td><span class="badge bg-${severityBadge}">${alert.severity || 'N/A'}</span></td>
+                        <td>${alert.event}</td>
+                        <td>${shortArea}</td>
+                    </tr>`;
                 });
-                html += '</div>';
+                
+                html += '</tbody></table></div>';
             }
             
             tableContainer.innerHTML = html;

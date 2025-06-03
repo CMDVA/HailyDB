@@ -532,7 +532,7 @@ def internal_dashboard():
 @app.route('/internal/cron', methods=['POST'])
 def internal_cron():
     """Enable/disable polling, update interval"""
-    action = request.json.get('action')
+    action = request.json.get('action') if request.json else None
     
     if action == 'start':
         if scheduler and not scheduler.running:

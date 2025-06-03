@@ -448,12 +448,6 @@
     // Initialize dashboard
     document.addEventListener('DOMContentLoaded', function() {
         initializeDashboard();
-        loadRecentAlerts();
-        
-        // Update every 30 seconds
-        setInterval(function() {
-            updateDashboardStatus();
-        }, 30000);
     });
 </script>
 {% endblock %}
