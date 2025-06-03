@@ -524,6 +524,9 @@ async function loadNextWeek() {
                 console.log('New results after filtering:', newResults.length, newResults);
                 
                 if (newResults.length > 0) {
+                    // Sort new results by date (newest first to maintain chronological order)
+                    newResults.sort((a, b) => new Date(b.date) - new Date(a.date));
+                    
                     // Add new rows to the existing table
                     newResults.forEach(result => {
                         const statusBadge = result.match_status === 'MATCH' 
