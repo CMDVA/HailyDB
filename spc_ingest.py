@@ -88,7 +88,7 @@ class SPCIngestService:
         self.db.flush()  # Get the ID
         
         try:
-            url = f"{self.base_url}{self.format_date_for_url(report_date)}_rpts_filtered.csv"
+            url = f"{self.base_url}{self.format_date_for_url(report_date)}_filtered.csv"
             log.url_attempted = url
             
             logger.info(f"Polling SPC reports from {url}")
