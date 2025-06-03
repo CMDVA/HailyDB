@@ -165,7 +165,9 @@ function updateStatusIndicator() {
                         minute: '2-digit',
                         hour12: true 
                     });
-                    spcCountdownTimer.textContent = `${timeString} (${operation})`;
+                    // SPC should show "spc" operation type since both run together
+                    const spcOperation = operation === 'nws' ? 'spc' : operation;
+                    spcCountdownTimer.textContent = `${timeString} (${spcOperation})`;
                 }
                 
                 // Show NWS last ingestion result
