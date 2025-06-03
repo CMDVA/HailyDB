@@ -78,15 +78,15 @@ function updateNextPollTime() {
 async function loadTodaysAlerts() {
     try {
         const today = new Date().toISOString().split('T')[0];
-        const response = await fetch(`/alerts?format=json&per_page=50`);
+        const response = await fetch(`/alerts?format=json&per_page=200&effective_date=${today}`);
         const data = await response.json();
         
         const tableContainer = document.getElementById('todays-alerts-table');
         if (!tableContainer) return;
         
-        // Filter to today's alerts
+        // Filter to today's alerts based on effective date
         const todaysAlerts = data.alerts ? data.alerts.filter(alert => {
-            const alertDate = new Date(alert.ingested_at || alert.effective).toISOString().split('T')[0];
+            const alertDate = new Date(alert.effective).toISOString().split('T')[0];
             return alertDate === today;
         }) : [];
         
@@ -125,7 +125,10 @@ async function loadTodaysAlerts() {
                 html += '<div class="table-responsive"><table class="table table-sm small">';
                 html += '<thead><tr><th>Date/Time</th><th>Severity</th><th>Type</th><th>Area</th></tr></thead><tbody>';
                 
-                todaysAlerts.slice(0, 5).forEach(alert => {
+                // Sort by effective date descending (most recent first)
+                const sortedAlerts = todaysAlerts.sort((a, b) => new Date(b.effective) - new Date(a.effective));
+                
+                sortedAlerts.slice(0, 5).forEach(alert => {
                     const dateTime = new Date(alert.effective).toLocaleString();
                     const severityBadge = getSeverityColor(alert.severity);
                     const shortArea = alert.area_desc ? 
