@@ -156,13 +156,14 @@ class SPCVerificationService:
             existing_count = SPCReport.query.filter(SPCReport.report_date == check_date).count()
             if existing_count > 0:
                 SPCReport.query.filter(SPCReport.report_date == check_date).delete()
-                self.db.commit()
-                logger.info(f"Deleted {existing_count} existing SPC reports for {check_date}")
+                # Don't commit yet - wait until after successful re-ingestion
+                logger.info(f"Marked {existing_count} existing SPC reports for deletion on {check_date}")
             
-            # Now re-ingest the data
+            # Now re-ingest the data (this will commit the transaction if successful)
             spc_ingester = SPCIngestService(self.db)
             result = spc_ingester.poll_spc_reports(check_date)
             
+            # If we get here, the ingestion was successful and transaction was committed
             return {
                 'success': True,
                 'date': check_date.strftime('%Y-%m-%d'),
