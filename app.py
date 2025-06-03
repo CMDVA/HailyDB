@@ -67,6 +67,7 @@ with app.app_context():
     # Initialize services
     ingest_service = IngestService(db)
     enrich_service = EnrichmentService(db)
+    scheduler_service = SchedulerService(db)
 
 # API Routes
 @app.route('/alerts')
@@ -473,6 +474,9 @@ def internal_status():
         
         failed_jobs = [log for log in recent_logs if not log.success]
         
+        # Scheduler operation statistics
+        scheduler_stats = scheduler_service.get_operation_stats() if scheduler_service else {}
+        
         # Database health check
         try:
             db.session.execute(db.text('SELECT 1'))
@@ -504,7 +508,8 @@ def internal_status():
                 'environment': 'replit',
                 'python_version': '3.11',
                 'framework': 'flask+sqlalchemy'
-            }
+            },
+            'scheduler_operations': scheduler_stats
         })
         
     except Exception as e:
