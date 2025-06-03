@@ -254,7 +254,7 @@ class AutonomousScheduler:
             from models import SchedulerLog
             recent_nws_op = SchedulerLog.query.filter_by(
                 operation_type='nws_poll'
-            ).order_by(SchedulerLog.completed_at.desc()).first()
+            ).filter(SchedulerLog.completed_at.isnot(None)).order_by(SchedulerLog.completed_at.desc()).first()
             
             if recent_nws_op and recent_nws_op.completed_at:
                 last_operation = {

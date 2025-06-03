@@ -947,6 +947,82 @@ def spc_verify_today():
 def index():
     return redirect(url_for('internal_dashboard'))
 
+@app.route('/ingestion-logs')
+def ingestion_logs():
+    """View ingestion logs page"""
+    return render_template('ingestion_logs.html')
+
+@app.route('/ingestion-logs/data')
+def ingestion_logs_data():
+    """API endpoint for ingestion logs data"""
+    try:
+        hours = int(request.args.get('hours', 24))
+        operation_type = request.args.get('operation_type', '')
+        success_param = request.args.get('success', '')
+        
+        # Build query
+        query = SchedulerLog.query
+        
+        # Filter by time
+        since = datetime.utcnow() - timedelta(hours=hours)
+        query = query.filter(SchedulerLog.started_at >= since)
+        
+        # Filter by operation type
+        if operation_type:
+            query = query.filter(SchedulerLog.operation_type == operation_type)
+        
+        # Filter by success status
+        if success_param == 'true':
+            query = query.filter(SchedulerLog.success == True)
+        elif success_param == 'false':
+            query = query.filter(SchedulerLog.success == False)
+        
+        # Order by most recent first
+        logs = query.order_by(SchedulerLog.started_at.desc()).limit(100).all()
+        
+        # Calculate summary statistics
+        summary_query = SchedulerLog.query.filter(SchedulerLog.started_at >= since)
+        if operation_type:
+            summary_query = summary_query.filter(SchedulerLog.operation_type == operation_type)
+        
+        all_logs = summary_query.all()
+        success_count = sum(1 for log in all_logs if log.success)
+        error_count = len(all_logs) - success_count
+        total_processed = sum(log.records_processed or 0 for log in all_logs if log.success)
+        total_new = sum(log.records_new or 0 for log in all_logs if log.success)
+        
+        # Format logs for JSON response
+        formatted_logs = []
+        for log in logs:
+            duration = None
+            if log.started_at and log.completed_at:
+                duration = round((log.completed_at - log.started_at).total_seconds(), 1)
+            
+            formatted_logs.append({
+                'started_at': log.started_at.isoformat() if log.started_at else None,
+                'completed_at': log.completed_at.isoformat() if log.completed_at else None,
+                'operation_type': log.operation_type,
+                'trigger_method': log.trigger_method,
+                'success': log.success,
+                'records_processed': log.records_processed,
+                'records_new': log.records_new,
+                'error_message': log.error_message,
+                'duration': duration
+            })
+        
+        return jsonify({
+            'summary': {
+                'success_count': success_count,
+                'error_count': error_count,
+                'total_processed': total_processed,
+                'total_new': total_new
+            },
+            'logs': formatted_logs
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == '__main__':
     with app.app_context():
         init_scheduler()
