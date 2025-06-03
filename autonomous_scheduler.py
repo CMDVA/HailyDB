@@ -248,6 +248,23 @@ class AutonomousScheduler:
     
     def get_status(self) -> dict:
         """Get scheduler status for diagnostics"""
+        # Get most recent NWS operation from database
+        last_operation = None
+        try:
+            from models import SchedulerLog
+            recent_nws_op = SchedulerLog.query.filter_by(
+                operation_type='nws_poll'
+            ).order_by(SchedulerLog.completed_at.desc()).first()
+            
+            if recent_nws_op and recent_nws_op.completed_at:
+                last_operation = {
+                    'completed_at': recent_nws_op.completed_at.isoformat(),
+                    'success': recent_nws_op.success,
+                    'records_new': recent_nws_op.records_new or 0
+                }
+        except Exception as e:
+            logger.warning(f"Could not fetch last operation: {e}")
+        
         return {
             'running': self.running,
             'thread_alive': self.thread.is_alive() if self.thread else False,
@@ -259,6 +276,7 @@ class AutonomousScheduler:
                 'spc_minutes': self.spc_interval,
                 'matching_minutes': self.matching_interval
             },
+            'last_operation': last_operation,
             'last_operation_result': self.last_operation_result
         }
     

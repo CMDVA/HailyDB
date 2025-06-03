@@ -131,30 +131,31 @@ function updateStatusIndicator() {
                         progressBar.className = 'progress-bar bg-info';
                     }
                 }
+                
+                // Show last ingestion result persistently
+                if (lastResultDiv && resultText && scheduler.last_operation) {
+                    lastResultDiv.style.display = 'block';
+                    const lastOp = scheduler.last_operation;
+                    const lastTime = new Date(lastOp.completed_at).toLocaleTimeString('en-US', {
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        hour12: true
+                    });
+                    
+                    if (lastOp.success) {
+                        resultText.className = 'text-success';
+                        resultText.textContent = `Last Ingestion: ${lastOp.records_new} Alerts at ${lastTime}`;
+                    } else {
+                        resultText.className = 'text-danger';
+                        resultText.textContent = `Last Ingestion: Failed at ${lastTime}`;
+                    }
+                }
             } else {
                 if (countdownDiv) countdownDiv.style.display = 'none';
                 if (progressDiv) progressDiv.style.display = 'none';
+                if (lastResultDiv) lastResultDiv.style.display = 'none';
             }
-            
-            // Show last operation result (only if it's new)
-            if (scheduler.last_operation_result && lastResultDiv && resultText) {
-                const result = scheduler.last_operation_result;
-                const resultKey = `${result.operation}-${result.timestamp}-${result.message}`;
-                
-                // Only show if this is a new result
-                if (lastShownResult !== resultKey) {
-                    lastShownResult = resultKey;
-                    lastResultDiv.style.display = 'block';
-                    const isSuccess = result.success;
-                    resultText.className = isSuccess ? 'text-success' : 'text-danger';
-                    resultText.innerHTML = `<i class="fas fa-${isSuccess ? 'check' : 'exclamation-triangle'} me-1"></i>${result.message || (isSuccess ? 'Success' : 'Failed')}`;
-                    
-                    // Auto-hide after 10 seconds
-                    setTimeout(() => {
-                        if (lastResultDiv) lastResultDiv.style.display = 'none';
-                    }, 10000);
-                }
-            }
+
         })
         .catch(error => {
             console.error('Error fetching scheduler status:', error);
