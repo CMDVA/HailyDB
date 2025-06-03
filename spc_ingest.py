@@ -88,6 +88,7 @@ class SPCIngestService:
         self.db.flush()  # Get the ID
         
         try:
+            # Try filtered data first
             url = f"{self.base_url}{self.format_date_for_url(report_date)}_rpts_filtered.csv"
             log.url_attempted = url
             
@@ -95,6 +96,14 @@ class SPCIngestService:
             
             # Download CSV
             response = requests.get(url, timeout=Config.REQUEST_TIMEOUT)
+            
+            # If filtered data is empty or unavailable, try unfiltered
+            if response.status_code == 404 or not response.text.strip():
+                url = f"{self.base_url}{self.format_date_for_url(report_date)}_rpts.csv"
+                log.url_attempted = url
+                logger.info(f"Filtered data unavailable, trying unfiltered: {url}")
+                response = requests.get(url, timeout=Config.REQUEST_TIMEOUT)
+            
             response.raise_for_status()
             
             # Parse CSV content
