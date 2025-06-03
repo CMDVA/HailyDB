@@ -192,7 +192,9 @@ class SPCIngestService:
                     logger.warning(f"Error parsing line {line_num + 1}: {line[:50]}... - {e}")
                     continue
         
-        logger.info(f"Parsed {len(reports)} total reports: {tornado_count} tornado, {wind_count} wind, {hail_count} hail")
+        logger.info(f"CSV parsing complete: {len(lines)} total lines processed")
+        logger.info(f"Sections detected: tornado={tornado_count}, wind={wind_count}, hail={hail_count}")
+        logger.info(f"Total reports parsed: {len(reports)}")
         
         return {
             'reports': reports,
