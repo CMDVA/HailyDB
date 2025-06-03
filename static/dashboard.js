@@ -189,10 +189,14 @@ async function loadTodaysSPCEvents() {
                     
                 const spcCount = result.spc_live_count !== null ? result.spc_live_count : 'N/A';
                 
+                // Use green badges when counts match
+                const hailyBadgeClass = result.match_status === 'MATCH' ? 'bg-success' : 'bg-primary';
+                const spcBadgeClass = result.match_status === 'MATCH' ? 'bg-success' : 'bg-secondary';
+                
                 html += `<tr>
                     <td>${result.date}</td>
-                    <td><span class="badge bg-primary">${result.hailydb_count}</span></td>
-                    <td><span class="badge bg-secondary">${spcCount}</span></td>
+                    <td><span class="badge ${hailyBadgeClass}">${result.hailydb_count}</span></td>
+                    <td><span class="badge ${spcBadgeClass}">${spcCount}</span></td>
                     <td>${statusBadge}</td>
                     <td><button class="btn btn-sm btn-outline-primary" onclick="forceReingestion('${result.date}', this)" title="Force re-ingestion for this date" data-date="${result.date}">
                         <i class="fas fa-sync-alt"></i>
