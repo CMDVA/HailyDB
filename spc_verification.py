@@ -1,0 +1,169 @@
+"""
+SPC Data Integrity Verification Service
+Compares HailyDB SPC report counts with live SPC data to verify database correctness
+"""
+
+import requests
+from datetime import datetime, date, timedelta
+from typing import Dict, List, Tuple
+import logging
+from config import Config
+
+logger = logging.getLogger(__name__)
+
+class SPCVerificationService:
+    """
+    Service to verify SPC data integrity by comparing database counts with live SPC data
+    """
+    
+    def __init__(self, db_session):
+        self.db = db_session
+        self.base_url = "https://www.spc.noaa.gov/climo/reports/"
+        
+    def verify_date_range(self, start_date: date, end_date: date) -> List[Dict]:
+        """
+        Verify SPC data integrity for a date range
+        Returns list of verification results with format:
+        {date, hailydb_count, spc_live_count, match_status}
+        """
+        verification_results = []
+        current_date = start_date
+        
+        while current_date <= end_date:
+            result = self.verify_single_date(current_date)
+            verification_results.append(result)
+            current_date += timedelta(days=1)
+            
+        return verification_results
+    
+    def verify_single_date(self, check_date: date) -> Dict:
+        """
+        Verify SPC data for a single date
+        """
+        from models import SPCReport
+        
+        # Get count from HailyDB
+        hailydb_count = self.db.query(SPCReport).filter(
+            SPCReport.report_date == check_date
+        ).count()
+        
+        # Get count from live SPC data
+        spc_live_count = self.get_live_spc_count(check_date)
+        
+        # Determine match status
+        if spc_live_count is None:
+            match_status = "SPC_UNAVAILABLE"
+        elif hailydb_count == spc_live_count:
+            match_status = "MATCH"
+        else:
+            match_status = "MISMATCH"
+            
+        return {
+            'date': check_date.strftime('%Y-%m-%d'),
+            'hailydb_count': hailydb_count,
+            'spc_live_count': spc_live_count,
+            'match_status': match_status,
+            'difference': (spc_live_count - hailydb_count) if spc_live_count is not None else None
+        }
+    
+    def get_live_spc_count(self, check_date: date) -> int:
+        """
+        Fetch live SPC report count for a specific date
+        Returns total count across all report types (tornado, wind, hail)
+        """
+        try:
+            # Format date for SPC URL (YYMMDD)
+            date_str = check_date.strftime('%y%m%d')
+            url = f"{self.base_url}{date_str}_rpts.csv"
+            
+            response = requests.get(url, timeout=30)
+            if response.status_code == 404:
+                # No data available for this date
+                return 0
+            elif response.status_code != 200:
+                logger.warning(f"Failed to fetch SPC data for {check_date}: HTTP {response.status_code}")
+                return None
+                
+            # Parse CSV content to count total reports
+            csv_content = response.text
+            total_count = self._count_reports_in_csv(csv_content)
+            
+            return total_count
+            
+        except Exception as e:
+            logger.error(f"Error fetching live SPC data for {check_date}: {e}")
+            return None
+    
+    def _count_reports_in_csv(self, csv_content: str) -> int:
+        """
+        Count total reports in SPC CSV content
+        Skips header lines and counts data lines across all sections
+        """
+        lines = csv_content.strip().split('\n')
+        total_count = 0
+        
+        for line in lines:
+            line = line.strip()
+            
+            # Skip empty lines
+            if not line:
+                continue
+                
+            # Skip header lines (contain section names or column headers)
+            if any(header in line.upper() for header in [
+                'TORNADO', 'WIND', 'HAIL', 'TIME', 'LOCATION', 'COUNTY', 'STATE'
+            ]):
+                continue
+                
+            # Skip lines that start with non-numeric characters (likely headers)
+            if line and not line[0].isdigit():
+                continue
+                
+            # Count valid data lines
+            total_count += 1
+            
+        return total_count
+    
+    def get_verification_summary(self, results: List[Dict]) -> Dict:
+        """
+        Generate summary statistics from verification results
+        """
+        if not results:
+            return {'total_dates': 0, 'matches': 0, 'mismatches': 0, 'unavailable': 0}
+            
+        matches = sum(1 for r in results if r['match_status'] == 'MATCH')
+        mismatches = sum(1 for r in results if r['match_status'] == 'MISMATCH')
+        unavailable = sum(1 for r in results if r['match_status'] == 'SPC_UNAVAILABLE')
+        
+        return {
+            'total_dates': len(results),
+            'matches': matches,
+            'mismatches': mismatches,
+            'unavailable': unavailable,
+            'match_percentage': (matches / len(results)) * 100 if results else 0
+        }
+    
+    def trigger_reupload_for_date(self, check_date: date) -> Dict:
+        """
+        Trigger re-upload of SPC data for a specific date when mismatch is detected
+        """
+        from spc_ingest import SPCIngestService
+        
+        try:
+            spc_ingester = SPCIngestService(self.db)
+            result = spc_ingester.poll_spc_reports(check_date)
+            
+            return {
+                'success': True,
+                'date': check_date.strftime('%Y-%m-%d'),
+                'message': f"Re-uploaded SPC data for {check_date}",
+                'reports_ingested': result.get('total_reports', 0)
+            }
+            
+        except Exception as e:
+            logger.error(f"Error re-uploading SPC data for {check_date}: {e}")
+            return {
+                'success': False,
+                'date': check_date.strftime('%Y-%m-%d'),
+                'message': f"Failed to re-upload: {str(e)}"
+            }

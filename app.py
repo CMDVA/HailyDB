@@ -47,6 +47,7 @@ from ingest import IngestService
 from enrich import EnrichmentService
 from spc_ingest import SPCIngestService
 from spc_matcher import SPCMatchingService
+from spc_verification import SPCVerificationService
 from config import Config
 
 # Global services
@@ -590,6 +591,57 @@ def init_scheduler():
 
 # Shutdown scheduler when app stops
 atexit.register(lambda: scheduler.shutdown() if scheduler else None)
+
+@app.route('/internal/spc-verify')
+def spc_verify():
+    """SPC Data Integrity Verification"""
+    try:
+        verification_service = SPCVerificationService(db.session)
+        
+        # Get date range from query params (default to last 7 days)
+        days = request.args.get('days', 7, type=int)
+        end_date = datetime.utcnow().date()
+        start_date = end_date - timedelta(days=days-1)
+        
+        # Run verification
+        results = verification_service.verify_date_range(start_date, end_date)
+        summary = verification_service.get_verification_summary(results)
+        
+        if request.args.get('format') == 'json':
+            return jsonify({
+                'results': results,
+                'summary': summary,
+                'date_range': {
+                    'start': start_date.strftime('%Y-%m-%d'),
+                    'end': end_date.strftime('%Y-%m-%d')
+                }
+            })
+        
+        return render_template('spc_verification.html', 
+                             results=results, 
+                             summary=summary,
+                             start_date=start_date,
+                             end_date=end_date)
+    
+    except Exception as e:
+        logger.error(f"Error in SPC verification: {e}")
+        return render_template('error.html', error=str(e)), 500
+
+@app.route('/internal/spc-reupload/<date_str>', methods=['POST'])
+def spc_reupload(date_str):
+    """Trigger SPC data re-upload for a specific date"""
+    try:
+        check_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        verification_service = SPCVerificationService(db.session)
+        result = verification_service.trigger_reupload_for_date(check_date)
+        
+        return jsonify(result)
+    
+    except ValueError:
+        return jsonify({'success': False, 'message': 'Invalid date format'}), 400
+    except Exception as e:
+        logger.error(f"Error re-uploading SPC data for {date_str}: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 # Home route
 @app.route('/')

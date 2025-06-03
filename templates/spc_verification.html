@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+
+{% block title %}SPC Data Integrity Verification - NWS Alert Service{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0">
+                    <i class="fas fa-shield-alt me-2"></i>
+                    SPC Data Integrity Verification
+                </h1>
+                <div class="btn-group" role="group">
+                    <a href="/internal/spc-verify?format=json" class="btn btn-outline-secondary" target="_blank">
+                        <i class="fas fa-code me-1"></i>JSON API
+                    </a>
+                    <button type="button" class="btn btn-outline-primary" onclick="refreshVerification()">
+                        <i class="fas fa-sync-alt me-1"></i>Refresh
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total Dates</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ summary.total_dates }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-calendar fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Matches</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ summary.matches }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-check-circle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card border-left-danger shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">Mismatches</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ summary.mismatches }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Match Rate</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ "%.1f"|format(summary.match_percentage) }}%</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-percentage fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Verification Results Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        Data Integrity Results ({{ start_date }} to {{ end_date }})
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% if results %}
+                    <div class="table-responsive">
+                        <table class="table table-bordered" id="dataTable">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>HailyDB Count</th>
+                                    <th>SPC Live Count</th>
+                                    <th>Status</th>
+                                    <th>Difference</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for result in results %}
+                                <tr>
+                                    <td>{{ result.date }}</td>
+                                    <td><span class="badge bg-primary">{{ result.hailydb_count }}</span></td>
+                                    <td>
+                                        {% if result.spc_live_count is not none %}
+                                            <span class="badge bg-secondary">{{ result.spc_live_count }}</span>
+                                        {% else %}
+                                            <span class="badge bg-warning">N/A</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if result.match_status == 'MATCH' %}
+                                            <span class="badge bg-success">
+                                                <i class="fas fa-check me-1"></i>MATCH
+                                            </span>
+                                        {% elif result.match_status == 'MISMATCH' %}
+                                            <span class="badge bg-danger">
+                                                <i class="fas fa-times me-1"></i>MISMATCH
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-warning">
+                                                <i class="fas fa-question me-1"></i>{{ result.match_status }}
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if result.difference is not none %}
+                                            {% if result.difference > 0 %}
+                                                <span class="text-info">+{{ result.difference }}</span>
+                                            {% elif result.difference < 0 %}
+                                                <span class="text-danger">{{ result.difference }}</span>
+                                            {% else %}
+                                                <span class="text-muted">0</span>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="text-muted">—</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if result.match_status == 'MISMATCH' %}
+                                            <button class="btn btn-sm btn-outline-primary" 
+                                                    onclick="reuploadData('{{ result.date }}')">
+                                                <i class="fas fa-sync-alt me-1"></i>Re-upload
+                                            </button>
+                                        {% else %}
+                                            <span class="text-muted">—</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <p class="text-muted">No verification results available.</p>
+                        <button class="btn btn-primary" onclick="refreshVerification()">
+                            <i class="fas fa-sync-alt me-1"></i>Run Verification
+                        </button>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function refreshVerification() {
+    location.reload();
+}
+
+async function reuploadData(dateStr) {
+    const button = event.target;
+    button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Re-uploading...';
+    
+    try {
+        const response = await fetch(`/internal/spc-reupload/${dateStr}`, {
+            method: 'POST'
+        });
+        const result = await response.json();
+        
+        if (result.success) {
+            showNotification(`Successfully re-uploaded data for ${dateStr}`, 'success');
+            setTimeout(() => location.reload(), 2000);
+        } else {
+            showNotification(`Failed to re-upload data: ${result.message}`, 'error');
+            button.disabled = false;
+            button.innerHTML = '<i class="fas fa-sync-alt me-1"></i>Re-upload';
+        }
+    } catch (error) {
+        console.error('Error re-uploading data:', error);
+        showNotification('Error re-uploading data', 'error');
+        button.disabled = false;
+        button.innerHTML = '<i class="fas fa-sync-alt me-1"></i>Re-upload';
+    }
+}
+
+function showNotification(message, type = 'info') {
+    const alertClass = type === 'error' ? 'alert-danger' : `alert-${type}`;
+    const alert = document.createElement('div');
+    alert.className = `alert ${alertClass} alert-dismissible fade show position-fixed`;
+    alert.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    alert.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(alert);
+    
+    setTimeout(() => {
+        if (alert.parentNode) {
+            alert.parentNode.removeChild(alert);
+        }
+    }, 5000);
+}
+</script>
+{% endblock %}
