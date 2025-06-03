@@ -48,6 +48,9 @@ class AutonomousScheduler:
         self.nws_lock = threading.Lock()
         self.spc_lock = threading.Lock()
         self.matching_lock = threading.Lock()
+        
+        # Track last operation results for dashboard
+        self.last_operation_result = None
     
     def start(self):
         """Start the autonomous scheduler"""
@@ -69,23 +72,25 @@ class AutonomousScheduler:
     
     def _scheduler_loop(self):
         """Main scheduler loop that runs continuously"""
+        from app import app
         logger.info("Scheduler loop started")
         
         while self.running:
             try:
-                current_time = datetime.utcnow()
-                
-                # Check if NWS polling is due
-                if self._should_run_nws_poll(current_time):
-                    self._run_nws_poll()
-                
-                # Check if SPC polling is due
-                if self._should_run_spc_poll(current_time):
-                    self._run_spc_poll()
-                
-                # Check if matching is due
-                if self._should_run_matching(current_time):
-                    self._run_matching()
+                with app.app_context():
+                    current_time = datetime.utcnow()
+                    
+                    # Check if NWS polling is due
+                    if self._should_run_nws_poll(current_time):
+                        self._run_nws_poll()
+                    
+                    # Check if SPC polling is due
+                    if self._should_run_spc_poll(current_time):
+                        self._run_spc_poll()
+                    
+                    # Check if matching is due
+                    if self._should_run_matching(current_time):
+                        self._run_matching()
                 
                 # Sleep for 30 seconds before next check
                 time.sleep(30)
@@ -137,6 +142,12 @@ class AutonomousScheduler:
             )
             
             self.last_nws_poll = datetime.utcnow()
+            self.last_operation_result = {
+                'operation': 'nws',
+                'success': True,
+                'message': f'{new_alerts} new alerts ingested',
+                'timestamp': self.last_nws_poll.isoformat()
+            }
             logger.info(f"NWS polling completed: {new_alerts} new alerts")
             
         except Exception as e:

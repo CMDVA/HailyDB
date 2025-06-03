@@ -821,9 +821,57 @@ def stop_autonomous_scheduler():
 
 @app.route('/internal/scheduler/status')
 def get_autonomous_scheduler_status():
-    """Get autonomous scheduler status"""
+    """Get autonomous scheduler status with countdown information"""
     try:
         status = autonomous_scheduler.get_status()
+        
+        # Calculate time until next operations
+        from datetime import datetime, timedelta
+        current_time = datetime.utcnow()
+        
+        # Next NWS poll (every 5 minutes)
+        last_nws = status.get('last_nws_poll')
+        if last_nws:
+            last_nws_dt = datetime.fromisoformat(last_nws.replace('Z', '+00:00')) if isinstance(last_nws, str) else last_nws
+            next_nws = last_nws_dt + timedelta(minutes=5)
+            nws_countdown = max(0, int((next_nws - current_time).total_seconds()))
+        else:
+            nws_countdown = 0
+        
+        # Next SPC poll (every 30 minutes) 
+        last_spc = status.get('last_spc_poll')
+        if last_spc:
+            last_spc_dt = datetime.fromisoformat(last_spc.replace('Z', '+00:00')) if isinstance(last_spc, str) else last_spc
+            next_spc = last_spc_dt + timedelta(minutes=30)
+            spc_countdown = max(0, int((next_spc - current_time).total_seconds()))
+        else:
+            spc_countdown = 0
+            
+        # Next matching (every 15 minutes)
+        last_match = status.get('last_matching')
+        if last_match:
+            last_match_dt = datetime.fromisoformat(last_match.replace('Z', '+00:00')) if isinstance(last_match, str) else last_match
+            next_match = last_match_dt + timedelta(minutes=15)
+            match_countdown = max(0, int((next_match - current_time).total_seconds()))
+        else:
+            match_countdown = 0
+        
+        # Determine which operation is next
+        next_operation = "nws"
+        next_countdown = nws_countdown
+        if spc_countdown < next_countdown and spc_countdown > 0:
+            next_operation = "spc"
+            next_countdown = spc_countdown
+        if match_countdown < next_countdown and match_countdown > 0:
+            next_operation = "matching"
+            next_countdown = match_countdown
+            
+        status['next_operation'] = next_operation
+        status['next_countdown'] = next_countdown
+        status['nws_countdown'] = nws_countdown
+        status['spc_countdown'] = spc_countdown
+        status['match_countdown'] = match_countdown
+        
         return jsonify({
             'success': True,
             'scheduler': status

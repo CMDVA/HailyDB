@@ -53,24 +53,32 @@ function initializeDashboard() {
     }
 }
 
-// Update status indicators and control buttons
+// Update status indicators and control buttons with real-time countdown
 function updateStatusIndicator() {
     const statusElement = document.getElementById('scheduler-status');
     const playButton = document.getElementById('scheduler-play-btn');
     const pauseButton = document.getElementById('scheduler-pause-btn');
+    const progressDiv = document.getElementById('ingestion-progress');
+    const progressText = document.getElementById('progress-text');
+    const progressBar = document.getElementById('progress-bar');
+    const countdownDiv = document.getElementById('next-ingestion-countdown');
+    const countdownTimer = document.getElementById('countdown-timer');
+    const lastResultDiv = document.getElementById('last-ingestion-result');
+    const resultText = document.getElementById('result-text');
     
     // Get current scheduler status from server
     fetch('/internal/scheduler/status')
         .then(response => response.json())
         .then(data => {
             const isRunning = data.success && data.scheduler && data.scheduler.running;
+            const scheduler = data.scheduler || {};
             
             if (statusElement) {
                 if (isRunning) {
-                    statusElement.className = 'text-success';
+                    statusElement.className = 'text-success me-2 font-weight-bold';
                     statusElement.innerHTML = '<i class="fas fa-play-circle me-1"></i>Running';
                 } else {
-                    statusElement.className = 'text-danger';
+                    statusElement.className = 'text-danger me-2 font-weight-bold';
                     statusElement.innerHTML = '<i class="fas fa-stop-circle me-1"></i>Stopped';
                 }
             }
@@ -85,13 +93,57 @@ function updateStatusIndicator() {
                     pauseButton.style.display = 'none';
                 }
             }
+            
+            // Update countdown and progress
+            if (isRunning && scheduler.next_countdown !== undefined) {
+                const countdown = scheduler.next_countdown;
+                const operation = scheduler.next_operation || 'operation';
+                
+                if (countdownDiv && countdownTimer) {
+                    countdownDiv.style.display = 'block';
+                    const minutes = Math.floor(countdown / 60);
+                    const seconds = countdown % 60;
+                    countdownTimer.textContent = `${minutes}:${seconds.toString().padStart(2, '0')} (${operation})`;
+                }
+                
+                // Show progress if operation is imminent (< 30 seconds)
+                if (countdown <= 30 && countdown > 0) {
+                    if (progressDiv && progressText && progressBar) {
+                        progressDiv.style.display = 'block';
+                        progressText.textContent = `Starting ${operation} ingestion...`;
+                        const progress = ((30 - countdown) / 30) * 100;
+                        progressBar.style.width = `${progress}%`;
+                    }
+                } else {
+                    if (progressDiv) progressDiv.style.display = 'none';
+                }
+            } else {
+                if (countdownDiv) countdownDiv.style.display = 'none';
+                if (progressDiv) progressDiv.style.display = 'none';
+            }
+            
+            // Show last operation result
+            if (scheduler.last_operation_result && lastResultDiv && resultText) {
+                lastResultDiv.style.display = 'block';
+                const result = scheduler.last_operation_result;
+                const isSuccess = result.success;
+                resultText.className = isSuccess ? 'text-success' : 'text-danger';
+                resultText.innerHTML = `<i class="fas fa-${isSuccess ? 'check' : 'exclamation-triangle'} me-1"></i>${result.message || (isSuccess ? 'Success' : 'Failed')}`;
+                
+                // Auto-hide after 10 seconds
+                setTimeout(() => {
+                    if (lastResultDiv) lastResultDiv.style.display = 'none';
+                }, 10000);
+            }
         })
         .catch(error => {
             console.error('Error fetching scheduler status:', error);
             if (statusElement) {
-                statusElement.className = 'text-warning';
+                statusElement.className = 'text-warning me-2 font-weight-bold';
                 statusElement.innerHTML = '<i class="fas fa-exclamation-circle me-1"></i>Unknown';
             }
+            if (countdownDiv) countdownDiv.style.display = 'none';
+            if (progressDiv) progressDiv.style.display = 'none';
         });
 }
 
