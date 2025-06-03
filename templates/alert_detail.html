@@ -124,12 +124,17 @@
                               <h2 class="text-xl font-semibold border-b pb-1 text-gray-800">📍 Affected Zones (Official Designations)</h2>
                               <table class="w-full text-sm mt-2">
                                 <thead>
-                                  <tr><th class="text-left">Area</th><th>FIPS Code</th><th>UGC Code</th></tr>
+                                  <tr><th class="text-left">County</th><th>FIPS Code</th><th>NWS Zone Code</th></tr>
                                 </thead>
                                 <tbody class="divide-y">
-                                  {% if alert.properties.geocode.get('FIPS6') and alert.properties.geocode.get('UGC') %}
-                                    {% for fips, ugc in zip(alert.properties.geocode.FIPS6, alert.properties.geocode.UGC) %}
-                                    <tr><td>{{ alert.area_desc or 'N/A' }}</td><td>{{ fips }}</td><td>{{ ugc }}</td></tr>
+                                  {% if alert.properties.geocode.get('SAME') and alert.properties.geocode.get('UGC') %}
+                                    {% set counties = alert.area_desc.split(';') if alert.area_desc else [] %}
+                                    {% for i in range(alert.properties.geocode.SAME|length) %}
+                                    <tr>
+                                      <td>{{ counties[i].strip() if i < counties|length else 'N/A' }}</td>
+                                      <td>{{ alert.properties.geocode.SAME[i] }}</td>
+                                      <td>{{ alert.properties.geocode.UGC[i] }}</td>
+                                    </tr>
                                     {% endfor %}
                                   {% endif %}
                                 </tbody>
@@ -142,16 +147,20 @@
                               <h2 class="text-xl font-semibold border-b pb-1 text-gray-800">📡 Technical Information</h2>
                               <ul class="list-none text-xs mt-2 space-y-1">
                                 <li><strong>Alert ID:</strong> {{ alert.id }}</li>
-                                {% if alert.properties.get('identifier') %}
-                                <li><strong>AWIPS ID:</strong> {{ alert.properties.identifier }}</li>
+                                {% if alert.properties.get('parameters', {}).get('WMOidentifier') %}
+                                <li><strong>WMO ID:</strong> {{ alert.properties.parameters.WMOidentifier[0] }}</li>
                                 {% endif %}
-                                {% if alert.properties.get('messageType') %}
-                                <li><strong>WMO ID:</strong> {{ alert.properties.messageType }}</li>
+                                {% if alert.properties.get('parameters', {}).get('VTEC') %}
+                                <li><strong>VTEC Code:</strong> {{ alert.properties.parameters.VTEC[0] }}</li>
                                 {% endif %}
-                                {% if alert.properties.get('vtec') %}
-                                <li><strong>VTEC Code:</strong> {{ alert.properties.vtec }}</li>
+                                {% if alert.properties.get('parameters', {}).get('AWIPSidentifier') %}
+                                <li><strong>AWIPS ID:</strong> {{ alert.properties.parameters.AWIPSidentifier[0] }}</li>
                                 {% endif %}
-                                <li><strong>Channels:</strong> EAS, NWEM, CMAS</li>
+                                <li><strong>Message Type:</strong> {{ alert.properties.get('messageType', 'Update') }} ({{ alert.properties.get('status', 'Actual') }})</li>
+                                {% if alert.properties.get('parameters', {}).get('BLOCKCHANNEL') %}
+                                <li><strong>Distribution Channels:</strong> {{ alert.properties.parameters.BLOCKCHANNEL | join(', ') }} (Emergency Alert, Wireless Emergency, etc.)</li>
+                                {% endif %}
+                                <li><strong>Response Type:</strong> {{ alert.properties.get('response', 'Shelter') }} (initially)</li>
                               </ul>
                             </section>
 
