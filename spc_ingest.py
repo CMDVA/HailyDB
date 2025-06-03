@@ -317,8 +317,38 @@ class SPCIngestService:
         """Store parsed reports in database"""
         counts = {'tornado': 0, 'wind': 0, 'hail': 0}
         
+        # Track processed unique keys to avoid duplicates within the same batch
+        processed_keys = set()
+        
         for report_data in reports:
             try:
+                # Create unique key for duplicate detection
+                unique_key = (
+                    report_data['report_date'],
+                    report_data['report_type'],
+                    report_data['time_utc'],
+                    report_data['latitude'],
+                    report_data['longitude']
+                )
+                
+                # Skip if we've already processed this exact report in this batch
+                if unique_key in processed_keys:
+                    logger.debug(f"Duplicate within batch ignored: {report_data['location']} {report_data['time_utc']}")
+                    continue
+                
+                # Check if report already exists in database
+                existing = SPCReport.query.filter(
+                    SPCReport.report_date == report_data['report_date'],
+                    SPCReport.report_type == report_data['report_type'], 
+                    SPCReport.time_utc == report_data['time_utc'],
+                    SPCReport.latitude == report_data['latitude'],
+                    SPCReport.longitude == report_data['longitude']
+                ).first()
+                
+                if existing:
+                    logger.debug(f"Duplicate in database ignored: {report_data['location']} {report_data['time_utc']}")
+                    continue
+                
                 # Create SPCReport object
                 report = SPCReport(
                     report_date=report_data['report_date'],
@@ -335,19 +365,16 @@ class SPCIngestService:
                 )
                 
                 self.db.add(report)
+                processed_keys.add(unique_key)
                 counts[report_data['report_type']] += 1
                 
-            except IntegrityError as e:
-                # Handle duplicates gracefully
-                self.db.rollback()
-                logger.debug(f"Duplicate report ignored: {report_data['location']} {report_data['time_utc']}")
-                continue
             except Exception as e:
                 logger.error(f"Error storing report: {e}")
                 continue
         
         try:
             self.db.commit()
+            logger.info(f"Successfully stored {sum(counts.values())} reports for {report_date}")
         except Exception as e:
             self.db.rollback()
             logger.error(f"Error committing reports: {e}")
