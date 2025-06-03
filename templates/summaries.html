@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+
+{% block title %}AI Alert Summaries - NWS Alert Service{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Header -->
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="h3 mb-0">
+                <i class="fas fa-robot me-2"></i>
+                AI Alert Summaries
+            </h1>
+            <div class="btn-group" role="group">
+                <a href="{{ url_for('get_alerts_summary') }}?format=json" class="btn btn-outline-secondary" target="_blank">
+                    <i class="fas fa-code me-1"></i>JSON API
+                </a>
+                <button type="button" class="btn btn-outline-primary" onclick="refreshSummaries()">
+                    <i class="fas fa-sync-alt me-1"></i>Refresh
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Summary Cards -->
+<div class="row">
+    <div class="col-12">
+        {% if summaries %}
+            <div class="alert alert-info mb-4">
+                <i class="fas fa-info-circle me-2"></i>
+                Showing {{ summaries|length }} recent alerts with AI-generated summaries
+            </div>
+            
+            {% for summary in summaries %}
+            <div class="card mb-3 alert-card">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-9">
+                            <!-- Alert Header -->
+                            <div class="d-flex align-items-start mb-3">
+                                <div class="severity-badge severity-{{ summary.severity.lower() if summary.severity else 'unknown' }} me-3">
+                                    {{ summary.severity or 'N/A' }}
+                                </div>
+                                <div class="flex-grow-1">
+                                    <h4 class="card-title mb-1">
+                                        <a href="{{ url_for('get_alert', alert_id=summary.id) }}" class="text-decoration-none">
+                                            {{ summary.event or 'Unknown Event' }}
+                                        </a>
+                                    </h4>
+                                    <p class="text-muted mb-2">
+                                        <i class="fas fa-map-marker-alt me-1"></i>
+                                        {{ summary.area_desc or 'Area not specified' }}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- AI Summary -->
+                            <div class="ai-summary mb-3">
+                                <h6 class="text-primary mb-2">
+                                    <i class="fas fa-robot me-1"></i>AI Summary
+                                </h6>
+                                <p class="mb-0">{{ summary.ai_summary }}</p>
+                            </div>
+
+                            <!-- AI Tags -->
+                            {% if summary.ai_tags %}
+                            <div class="alert-tags">
+                                <h6 class="text-muted mb-2">Tags</h6>
+                                {% for tag in summary.ai_tags %}
+                                    <span class="badge bg-secondary me-1 mb-1">{{ tag }}</span>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Metadata Sidebar -->
+                        <div class="col-md-3">
+                            <div class="alert-metadata">
+                                {% if summary.effective %}
+                                <p class="mb-1">
+                                    <small class="text-muted">
+                                        <i class="fas fa-clock me-1"></i>
+                                        <strong>Effective:</strong><br>
+                                        {{ summary.effective[:19] | replace('T', ' ') }} UTC
+                                    </small>
+                                </p>
+                                {% endif %}
+                                
+                                <div class="d-grid gap-2 mt-3">
+                                    <a href="{{ url_for('get_alert', alert_id=summary.id) }}" class="btn btn-outline-primary btn-sm">
+                                        <i class="fas fa-eye me-1"></i>View Details
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+            
+        {% else %}
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <i class="fas fa-robot fa-3x text-muted mb-3"></i>
+                    <h4 class="text-muted">No AI Summaries Available</h4>
+                    <p class="text-muted mb-4">
+                        No alerts have been enriched with AI summaries yet. Use the batch enrichment feature to process alerts automatically.
+                    </p>
+                    <div class="btn-group" role="group">
+                        <a href="{{ url_for('internal_dashboard') }}" class="btn btn-primary">
+                            <i class="fas fa-tachometer-alt me-1"></i>Go to Dashboard
+                        </a>
+                        <a href="{{ url_for('get_alerts') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-exclamation-triangle me-1"></i>View All Alerts
+                        </a>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Pagination (if needed) -->
+{% if summaries and summaries|length >= 20 %}
+<div class="row mt-4">
+    <div class="col-12 text-center">
+        <p class="text-muted">
+            Showing the 20 most recent AI-enriched alerts. 
+            <a href="{{ url_for('get_alerts') }}?ai_summary=true">View all enriched alerts</a>
+        </p>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+function refreshSummaries() {
+    window.location.reload();
+}
+
+// Auto-refresh every 5 minutes
+setInterval(function() {
+    window.location.reload();
+}, 300000);
+</script>
+{% endblock %}
