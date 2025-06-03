@@ -14,8 +14,17 @@ function initializeDashboard() {
         // Load dashboard data from script tag
         const dataElement = document.getElementById('dashboard-data');
         if (dataElement) {
-            dashboardData = JSON.parse(dataElement.textContent);
+            const dataText = dataElement.textContent.trim();
+            if (dataText) {
+                dashboardData = JSON.parse(dataText);
+            }
         }
+        
+        // Ensure dashboardData has default values
+        dashboardData = dashboardData || {};
+        dashboardData.severity_stats = dashboardData.severity_stats || {};
+        dashboardData.event_stats = dashboardData.event_stats || {};
+        dashboardData.scheduler_running = dashboardData.scheduler_running || false;
         
         // Initialize charts
         initializeCharts();
@@ -29,6 +38,12 @@ function initializeDashboard() {
         console.log('Dashboard initialized successfully');
     } catch (error) {
         console.error('Error initializing dashboard:', error);
+        // Set default values on error
+        dashboardData = {
+            severity_stats: {},
+            event_stats: {},
+            scheduler_running: false
+        };
     }
 }
 
