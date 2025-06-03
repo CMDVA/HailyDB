@@ -405,7 +405,7 @@ def view_spc_reports():
         total_reports = SPCReport.query.count()
         type_counts = db.session.query(
             SPCReport.report_type,
-            func.count(SPCReport.id).label('count')
+            db.func.count(SPCReport.id).label('count')
         ).group_by(SPCReport.report_type).all()
         
         return render_template('spc_reports.html', 
@@ -473,6 +473,33 @@ def internal_dashboard():
         spc_wind = SPCReport.query.filter(SPCReport.report_type == 'wind').count()
         spc_hail = SPCReport.query.filter(SPCReport.report_type == 'hail').count()
         
+        # Get actual alert types from database for dropdown
+        alert_types = db.session.query(Alert.event).distinct().order_by(Alert.event).all()
+        alert_types_list = [row[0] for row in alert_types if row[0]]
+        
+        # Daily totals for last 7 days for alerts
+        seven_days_ago = datetime.utcnow() - timedelta(days=7)
+        alert_daily_totals = db.session.query(
+            db.func.date(Alert.ingested_at).label('date'),
+            db.func.count(Alert.id).label('count')
+        ).filter(
+            Alert.ingested_at >= seven_days_ago
+        ).group_by(
+            db.func.date(Alert.ingested_at)
+        ).order_by('date').all()
+        
+        # Daily totals for last 7 days for SPC events
+        spc_daily_totals = db.session.query(
+            SPCReport.report_date,
+            SPCReport.report_type,
+            db.func.count(SPCReport.id).label('count')
+        ).filter(
+            SPCReport.report_date >= seven_days_ago.date()
+        ).group_by(
+            SPCReport.report_date,
+            SPCReport.report_type
+        ).order_by(SPCReport.report_date).all()
+        
         # Last ingestion
         last_alert = Alert.query.order_by(Alert.ingested_at.desc()).first()
         
@@ -484,6 +511,9 @@ def internal_dashboard():
             'spc_tornado': spc_tornado,
             'spc_wind': spc_wind,
             'spc_hail': spc_hail,
+            'alert_types': alert_types_list,
+            'alert_daily_totals': [(row.date.strftime('%Y-%m-%d'), row.count) for row in alert_daily_totals],
+            'spc_daily_totals': [(row.report_date.strftime('%Y-%m-%d'), row.report_type, row.count) for row in spc_daily_totals],
             'last_ingestion': last_alert.ingested_at if last_alert else None,
             'scheduler_running': scheduler.running if scheduler else False
         }

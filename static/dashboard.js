@@ -64,7 +64,7 @@ function updateNextPollTime() {
 // Load recent alerts into table
 async function loadRecentAlerts() {
     try {
-        const response = await fetch('/alerts?limit=10');
+        const response = await fetch('/alerts?format=json&per_page=10');
         const data = await response.json();
         
         const tableContainer = document.getElementById('recent-alerts-table');
@@ -78,7 +78,7 @@ async function loadRecentAlerts() {
             data.alerts.forEach(alert => {
                 const time = new Date(alert.effective).toLocaleString();
                 html += `<tr>
-                    <td><a href="/alert/${alert.id}">${alert.event}</a></td>
+                    <td><a href="/alerts/${alert.id}">${alert.event}</a></td>
                     <td>${alert.area_desc ? alert.area_desc.substring(0, 50) + '...' : 'N/A'}</td>
                     <td><span class="badge bg-${getSeverityColor(alert.severity)}">${alert.severity || 'N/A'}</span></td>
                     <td>${time}</td>
