@@ -32,6 +32,15 @@ app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
 # Initialize the app with the extension
 db.init_app(app)
 
+# Add custom Jinja2 filters
+@app.template_filter('number_format')
+def number_format(value):
+    """Format numbers with commas for thousands"""
+    try:
+        return "{:,}".format(int(value))
+    except (ValueError, TypeError):
+        return value
+
 # Import other modules after app initialization
 from models import Alert
 from ingest import IngestService
