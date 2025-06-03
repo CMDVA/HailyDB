@@ -98,6 +98,7 @@ class SPCIngestService:
             response.raise_for_status()
             
             # Parse CSV content
+            logger.info(f"CSV response length: {len(response.text)} characters")
             result = self._parse_spc_csv(response.text, report_date)
             
             # Check if we have more reports than before
