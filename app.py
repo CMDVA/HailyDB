@@ -643,6 +643,57 @@ def spc_reupload(date_str):
         logger.error(f"Error re-uploading SPC data for {date_str}: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
+@app.route('/internal/spc-verify-today')
+def spc_verify_today():
+    """Get today's SPC verification data for dashboard"""
+    try:
+        from datetime import date
+        import requests
+        
+        today = date.today()
+        
+        # Get HailyDB count for today
+        hailydb_count = SPCReport.query.filter(SPCReport.report_date == today).count()
+        
+        # Get live SPC count by fetching the CSV and counting rows
+        date_str = today.strftime("%y%m%d")
+        url = f"https://www.spc.noaa.gov/climo/reports/{date_str}_rpts_filtered.csv"
+        
+        try:
+            response = requests.get(url, timeout=10)
+            response.raise_for_status()
+            
+            # Count total data rows (subtract 3 for headers as you specified)
+            lines = response.text.strip().split('\n')
+            total_lines = len(lines)
+            spc_live_count = max(0, total_lines - 3)  # Subtract 3 header lines
+            
+        except requests.RequestException as e:
+            logger.warning(f"Could not fetch SPC data for verification: {e}")
+            spc_live_count = None
+        
+        # Determine match status
+        if spc_live_count is not None:
+            match_status = 'MATCH' if hailydb_count == spc_live_count else 'MISMATCH'
+        else:
+            match_status = 'UNKNOWN'
+        
+        return jsonify({
+            'status': 'success',
+            'date': today.strftime('%Y-%m-%d'),
+            'hailydb_count': hailydb_count,
+            'spc_live_count': spc_live_count,
+            'match_status': match_status,
+            'last_updated': datetime.utcnow().isoformat()
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in today's SPC verification: {e}")
+        return jsonify({
+            'status': 'error',
+            'error': str(e)
+        }), 500
+
 # Home route
 @app.route('/')
 def index():
