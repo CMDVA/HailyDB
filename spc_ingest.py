@@ -335,11 +335,13 @@ class SPCIngestService:
                     logger.debug(f"Duplicate within batch ignored: {report_data['location']} {report_data['time_utc']}")
                     continue
                 
-                # Check if exact same report already exists in database using raw CSV line
+                # Check if report already exists using the unique constraint fields
                 existing = SPCReport.query.filter(
                     SPCReport.report_date == report_data['report_date'],
                     SPCReport.report_type == report_data['report_type'],
-                    SPCReport.raw_csv_line == report_data['raw_csv_line']
+                    SPCReport.time_utc == report_data['time_utc'],
+                    SPCReport.latitude == report_data['latitude'],
+                    SPCReport.longitude == report_data['longitude']
                 ).first()
                 
                 if existing:
@@ -367,6 +369,8 @@ class SPCIngestService:
                 
             except Exception as e:
                 logger.error(f"Error storing report: {e}")
+                # Rollback this transaction to prevent session corruption
+                self.db.rollback()
                 continue
         
         try:
