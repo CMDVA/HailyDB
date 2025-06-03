@@ -96,14 +96,6 @@ async function loadTodaysAlerts() {
                 return acc;
             }, {});
             
-            // Count only alerts that match our allowed types
-            const filteredAlertsCount = todaysAlerts.filter(alert => 
-                allowedTypes.includes(alert.event || 'Unknown')
-            ).length;
-            
-            let html = `<div class="mb-2"><strong>${filteredAlertsCount} priority alerts today (${todaysAlerts.length} total ingested)</strong></div>`;
-            html += '<div class="row text-center mb-2">';
-            
             // Show only these specific alert types
             const allowedTypes = [
                 'Flash Flood Warning',
@@ -116,6 +108,14 @@ async function loadTodaysAlerts() {
                 'Storm Warning',
                 'Wind Advisory'
             ];
+            
+            // Count only alerts that match our allowed types
+            const filteredAlertsCount = todaysAlerts.filter(alert => 
+                allowedTypes.includes(alert.event || 'Unknown')
+            ).length;
+            
+            let html = `<div class="mb-2"><strong>${filteredAlertsCount} priority alerts today (${todaysAlerts.length} total ingested)</strong></div>`;
+            html += '<div class="row text-center mb-2">';
             const sortedTypes = Object.entries(alertsByType)
                 .filter(([type, count]) => allowedTypes.includes(type))
                 .sort((a, b) => {
@@ -148,12 +148,13 @@ async function loadTodaysAlerts() {
             html += '</div>';
             
             // Show recent alerts with Date/Time | Severity | Type | Area format
-            if (todaysAlerts.length > 0) {
+            const filteredAlerts = todaysAlerts.filter(alert => allowedTypes.includes(alert.event || 'Unknown'));
+            if (filteredAlerts.length > 0) {
                 html += '<div class="table-responsive"><table class="table table-sm small">';
                 html += '<thead><tr><th>Date/Time</th><th>Severity</th><th>Type</th><th>Area</th></tr></thead><tbody>';
                 
                 // Sort by effective date descending (most recent first)
-                const sortedAlerts = todaysAlerts.sort((a, b) => new Date(b.effective) - new Date(a.effective));
+                const sortedAlerts = filteredAlerts.sort((a, b) => new Date(b.effective) - new Date(a.effective));
                 
                 sortedAlerts.slice(0, 5).forEach(alert => {
                     const dateTime = new Date(alert.effective).toLocaleString();
