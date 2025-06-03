@@ -282,22 +282,29 @@ class SPCIngestService:
                 magnitude = data.get('F_Scale', '').strip()
                 report['magnitude'] = {'f_scale': magnitude} if magnitude else {}
             elif section_type == 'wind':
-                try:
-                    speed = int(data.get('Speed', 0)) if data.get('Speed', '').strip() != 'UNK' else None
-                    report['magnitude'] = {'speed': speed} if speed else {}
-                except (ValueError, TypeError):
+                speed_raw = data.get('Speed', '').strip()
+                if speed_raw == 'UNK':
+                    report['magnitude'] = {'speed': 'UNK'}
+                elif speed_raw:
+                    try:
+                        speed = int(speed_raw)
+                        report['magnitude'] = {'speed': speed}
+                    except (ValueError, TypeError):
+                        report['magnitude'] = {}
+                else:
                     report['magnitude'] = {}
             elif section_type == 'hail':
-                try:
-                    # Hail size in hundredths of inches
-                    size_raw = data.get('Size', '').strip()
-                    if size_raw and size_raw != 'UNK':
+                size_raw = data.get('Size', '').strip()
+                if size_raw == 'UNK':
+                    report['magnitude'] = {'size': 'UNK'}
+                elif size_raw:
+                    try:
                         size_hundredths = int(size_raw)
                         size_inches = size_hundredths / 100.0
                         report['magnitude'] = {'size_hundredths': size_hundredths, 'size_inches': size_inches}
-                    else:
+                    except (ValueError, TypeError):
                         report['magnitude'] = {}
-                except (ValueError, TypeError):
+                else:
                     report['magnitude'] = {}
             
             return report
