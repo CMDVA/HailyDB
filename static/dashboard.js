@@ -146,9 +146,6 @@ function updateStatusIndicator() {
                     }, 10000);
                 }
             }
-            
-            // Update SPC scheduler status (same as NWS since they run together)
-            updateSPCSchedulerStatus(scheduler);
         })
         .catch(error => {
             console.error('Error fetching scheduler status:', error);
@@ -158,12 +155,6 @@ function updateStatusIndicator() {
             }
             if (countdownDiv) countdownDiv.style.display = 'none';
             if (progressDiv) progressDiv.style.display = 'none';
-            
-            // Update SPC scheduler to unknown state
-            const spcStatusElement = document.getElementById('spc-scheduler-status');
-            if (spcStatusElement) {
-                spcStatusElement.innerHTML = '<i class="fas fa-exclamation-circle me-1"></i>Unknown';
-            }
         });
 }
 
@@ -479,93 +470,6 @@ function changePage(page) {
     window.dashboardAlertsData.currentPage = page;
 }
 
-// NWS Scheduler Functions
-function onPlayNWSScheduler() {
-    onPlayScheduler();
-}
-
-function onPauseNWSScheduler() {
-    onPauseScheduler();
-}
-
-// SPC Scheduler Functions - Currently linked to main scheduler
-// TODO: Implement independent SPC scheduler controls
-function onPlaySPCScheduler() {
-    // For now, SPC ingestion is part of the autonomous scheduler
-    onPlayScheduler();
-}
-
-function onPauseSPCScheduler() {
-    // For now, SPC ingestion is part of the autonomous scheduler
-    onPauseScheduler();
-}
-
-// Update NWS scheduler status
-function updateNWSSchedulerStatus(status) {
-    const nwsStatusElement = document.getElementById('nws-scheduler-status');
-    const nwsPlayBtn = document.getElementById('nws-scheduler-play-btn');
-    const nwsPauseBtn = document.getElementById('nws-scheduler-pause-btn');
-    const nwsCountdownDiv = document.getElementById('nws-next-ingestion-countdown');
-    const nwsProgressDiv = document.getElementById('nws-ingestion-progress');
-    
-    if (!nwsStatusElement) return;
-    
-    if (status.running) {
-        nwsStatusElement.innerHTML = '<i class="fas fa-play-circle me-1 text-success"></i>Running';
-        nwsPlayBtn.style.display = 'none';
-        nwsPauseBtn.style.display = 'inline-block';
-        nwsCountdownDiv.style.display = 'block';
-        
-        const nwsCountdownTimer = document.getElementById('nws-countdown-timer');
-        if (nwsCountdownTimer && status.next_nws_poll) {
-            nwsCountdownTimer.textContent = status.next_nws_poll;
-        }
-    } else {
-        nwsStatusElement.innerHTML = '<i class="fas fa-stop-circle me-1"></i>Stopped';
-        nwsPlayBtn.style.display = 'inline-block';
-        nwsPauseBtn.style.display = 'none';
-        nwsCountdownDiv.style.display = 'none';
-        if (nwsProgressDiv) nwsProgressDiv.style.display = 'none';
-    }
-}
-
-// Update SPC scheduler status based on main scheduler status
-function updateSPCSchedulerStatus(status) {
-    const spcStatusElement = document.getElementById('spc-scheduler-status');
-    const spcPlayBtn = document.getElementById('spc-scheduler-play-btn');
-    const spcPauseBtn = document.getElementById('spc-scheduler-pause-btn');
-    const spcCountdownDiv = document.getElementById('spc-next-ingestion-countdown');
-    const spcProgressDiv = document.getElementById('spc-ingestion-progress');
-    
-    if (!spcStatusElement) return;
-    
-    if (status.running) {
-        spcStatusElement.innerHTML = '<i class="fas fa-play-circle me-1 text-success"></i>Running';
-        spcPlayBtn.style.display = 'none';
-        spcPauseBtn.style.display = 'inline-block';
-        spcCountdownDiv.style.display = 'block';
-        
-        // Update SPC countdown timer - show SPC-specific timing
-        const spcCountdownTimer = document.getElementById('spc-countdown-timer');
-        if (spcCountdownTimer) {
-            if (status.next_spc_poll) {
-                spcCountdownTimer.textContent = status.next_spc_poll;
-            } else if (status.next_nws_poll) {
-                // Fallback to NWS timing since they run together
-                spcCountdownTimer.textContent = status.next_nws_poll;
-            } else {
-                spcCountdownTimer.textContent = '--';
-            }
-        }
-    } else {
-        spcStatusElement.innerHTML = '<i class="fas fa-stop-circle me-1"></i>Stopped';
-        spcPlayBtn.style.display = 'inline-block';
-        spcPauseBtn.style.display = 'none';
-        spcCountdownDiv.style.display = 'none';
-        if (spcProgressDiv) spcProgressDiv.style.display = 'none';
-    }
-}
-
 // Load SPC verification data (initial load only)
 async function loadSPCVerificationTable() {
     try {
@@ -829,25 +733,15 @@ async function loadNextWeek() {
                             ? '<span class="badge bg-success">MATCH</span>'
                             : result.match_status === 'MISMATCH'
                             ? '<span class="badge bg-danger">MISMATCH</span>'
-                            : result.match_status === 'SPC_UNAVAILABLE'
-                            ? '<span class="badge bg-warning">PENDING</span>'
-                            : '<span class="badge bg-secondary">UNKNOWN</span>';
+                            : '<span class="badge bg-warning">PENDING</span>';
                         
-                        // Use color-coded count display to match first 7 days
-                        const hailyBadgeClass = result.match_status === 'MATCH' ? 'bg-success' : 'bg-primary';
-                        const spcBadgeClass = result.match_status === 'MATCH' ? 'bg-success' : 'bg-secondary';
-                        
-                        const hailydbDisplay = `<span class="badge ${hailyBadgeClass}">${result.hailydb_count}</span>`;
-                        const spcDisplay = result.spc_live_count !== null 
-                            ? `<span class="badge ${spcBadgeClass}">${result.spc_live_count}</span>`
-                            : 'N/A';
-                        
+                        const spcCount = result.spc_live_count !== null ? result.spc_live_count : 'N/A';
                         const dateForUrl = result.date.replace(/-/g, '').slice(2); // Convert 2025-05-21 to 250521
-                        const externalLink = `<a href="https://www.spc.noaa.gov/climo/reports/${dateForUrl}_rpts_filtered.csv" target="_blank" class="btn btn-xs btn-outline-primary me-1">
+                        const externalLink = `<a href="https://www.spc.noaa.gov/climo/reports/${dateForUrl}_rpts.html" target="_blank" class="btn btn-xs btn-outline-primary me-1">
                             <i class="fas fa-external-link-alt"></i>
                         </a>`;
-                        const reuploadButton = result.match_status !== 'MATCH' ? 
-                            `<button class="btn btn-xs btn-outline-warning" onclick="triggerSPCReupload('${result.date}')">
+                        const reuploadButton = result.match_status === 'MISMATCH' ? 
+                            `<button class="btn btn-xs btn-outline-warning" onclick="forceReingestion('${result.date}', this)">
                                 <i class="fas fa-sync-alt"></i>
                             </button>` : 
                             `<button class="btn btn-xs btn-outline-secondary" disabled>
@@ -858,8 +752,8 @@ async function loadNextWeek() {
                         const newRow = document.createElement('tr');
                         newRow.innerHTML = `
                             <td>${result.date}</td>
-                            <td>${hailydbDisplay}</td>
-                            <td>${spcDisplay}</td>
+                            <td>${result.hailydb_count}</td>
+                            <td>${spcCount}</td>
                             <td>${statusBadge}</td>
                             <td>${actionButtons}</td>
                         `;
@@ -1327,7 +1221,6 @@ async function forceReingestion(date, buttonElement) {
 // Start autonomous scheduler
 async function startAutonomousScheduler() {
     try {
-        showIngestionProgress('Starting NWS scheduler...', 30);
         const response = await fetch('/internal/scheduler/start', {
             method: 'POST',
             headers: {
@@ -1338,25 +1231,18 @@ async function startAutonomousScheduler() {
         const result = await response.json();
         if (result.success) {
             console.log('Autonomous scheduler started successfully');
-            showIngestionProgress('NWS scheduler running', 100);
-            setTimeout(() => {
-                hideIngestionProgress();
-                updateSchedulerStatus();
-            }, 1500);
+            updateStatusIndicator();
         } else {
             console.error('Failed to start autonomous scheduler:', result.error);
-            hideIngestionProgress();
         }
     } catch (error) {
         console.error('Error starting autonomous scheduler:', error);
-        hideIngestionProgress();
     }
 }
 
 // Stop autonomous scheduler
 async function stopAutonomousScheduler() {
     try {
-        showIngestionProgress('Stopping NWS scheduler...', 30);
         const response = await fetch('/internal/scheduler/stop', {
             method: 'POST',
             headers: {
@@ -1367,80 +1253,12 @@ async function stopAutonomousScheduler() {
         const result = await response.json();
         if (result.success) {
             console.log('Autonomous scheduler stopped successfully');
-            showIngestionProgress('NWS scheduler stopped', 100);
-            setTimeout(() => {
-                hideIngestionProgress();
-                updateSchedulerStatus();
-            }, 1500);
+            updateStatusIndicator();
         } else {
             console.error('Failed to stop autonomous scheduler:', result.error);
-            hideIngestionProgress();
         }
     } catch (error) {
         console.error('Error stopping autonomous scheduler:', error);
-        hideIngestionProgress();
-    }
-}
-
-// Update scheduler status and countdown displays
-async function updateSchedulerStatus() {
-    try {
-        const response = await fetch('/internal/scheduler/status');
-        const data = await response.json();
-        
-        if (data.success) {
-            const status = data.scheduler;
-            
-            // Update NWS status
-            const nwsStatus = document.getElementById('nws-status');
-            const nwsCountdown = document.getElementById('nws-countdown');
-            const nwsPlayBtn = document.querySelector('.nws-play-btn');
-            const nwsPauseBtn = document.querySelector('.nws-pause-btn');
-            
-            if (status.running) {
-                if (nwsStatus) nwsStatus.textContent = 'Running';
-                if (nwsStatus) nwsStatus.className = 'text-success fw-bold';
-                if (nwsPlayBtn) nwsPlayBtn.style.display = 'none';
-                if (nwsPauseBtn) nwsPauseBtn.style.display = 'inline-block';
-                
-                // Display NWS countdown from API
-                if (status.nws_countdown !== undefined && nwsCountdown) {
-                    const secondsLeft = Math.max(0, status.nws_countdown);
-                    const minutes = Math.floor(secondsLeft / 60);
-                    const seconds = secondsLeft % 60;
-                    nwsCountdown.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-                }
-            } else {
-                if (nwsStatus) nwsStatus.textContent = 'Stopped';
-                if (nwsStatus) nwsStatus.className = 'text-danger fw-bold';
-                if (nwsPlayBtn) nwsPlayBtn.style.display = 'inline-block';
-                if (nwsPauseBtn) nwsPauseBtn.style.display = 'none';
-                if (nwsCountdown) nwsCountdown.textContent = '--';
-            }
-            
-            // Update SPC status
-            const spcStatus = document.getElementById('spc-status');
-            const spcCountdown = document.getElementById('spc-countdown');
-            
-            if (status.running) {
-                if (spcStatus) spcStatus.textContent = 'Running';
-                if (spcStatus) spcStatus.className = 'text-success fw-bold';
-                
-                // Display SPC countdown from API
-                if (status.spc_countdown !== undefined && spcCountdown) {
-                    const secondsLeft = Math.max(0, status.spc_countdown);
-                    const minutes = Math.floor(secondsLeft / 60);
-                    const seconds = secondsLeft % 60;
-                    spcCountdown.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-                }
-            } else {
-                if (spcStatus) spcStatus.textContent = 'Stopped';
-                if (spcStatus) spcStatus.className = 'text-danger fw-bold';
-                if (spcCountdown) spcCountdown.textContent = '--';
-            }
-        }
-    } catch (error) {
-        console.error('Error updating scheduler status:', error);
     }
 }
 
@@ -1453,53 +1271,5 @@ function onPlayScheduler() {
 function onPauseScheduler() {
     stopAutonomousScheduler();
 }
-
-function showIngestionProgress(message = 'Processing...', percentage = 0) {
-    // Update main progress bar if it exists
-    const progressDiv = document.getElementById('ingestion-progress');
-    const progressText = document.getElementById('progress-text');
-    const progressBar = document.getElementById('progress-bar');
-    
-    if (progressDiv && progressText && progressBar) {
-        progressText.textContent = message;
-        progressBar.style.width = percentage + '%';
-        progressDiv.style.display = 'block';
-    }
-    
-    // Update NWS progress bar
-    const nwsProgressDiv = document.getElementById('nws-ingestion-progress');
-    const nwsProgressText = document.getElementById('nws-progress-text');
-    const nwsProgressBar = document.getElementById('nws-progress-bar');
-    
-    if (nwsProgressDiv && nwsProgressText && nwsProgressBar) {
-        nwsProgressText.textContent = message;
-        nwsProgressBar.style.width = percentage + '%';
-        nwsProgressDiv.style.display = 'block';
-    }
-    
-    // Update SPC progress bar
-    const spcProgressDiv = document.getElementById('spc-ingestion-progress');
-    const spcProgressText = document.getElementById('spc-progress-text');
-    const spcProgressBar = document.getElementById('spc-progress-bar');
-    
-    if (spcProgressDiv && spcProgressText && spcProgressBar) {
-        spcProgressText.textContent = message;
-        spcProgressBar.style.width = percentage + '%';
-        spcProgressDiv.style.display = 'block';
-    }
-}
-
-function hideIngestionProgress() {
-    const progressDiv = document.getElementById('ingestion-progress');
-    const nwsProgressDiv = document.getElementById('nws-ingestion-progress');
-    const spcProgressDiv = document.getElementById('spc-ingestion-progress');
-    
-    if (progressDiv) progressDiv.style.display = 'none';
-    if (nwsProgressDiv) nwsProgressDiv.style.display = 'none';
-    if (spcProgressDiv) spcProgressDiv.style.display = 'none';
-}
-
-// Start periodic status updates
-setInterval(updateSchedulerStatus, 5000); // Update every 5 seconds
 
 console.log('Dashboard JavaScript loaded successfully');

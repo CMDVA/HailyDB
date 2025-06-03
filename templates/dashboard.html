@@ -116,91 +116,42 @@
         </div>
     </div>
 
-    <!-- Automatic Ingestion Controls Row -->
-    <div class="col-xl-6 col-md-12 mb-4">
-        <div class="row">
-            <!-- NWS Automatic Ingestion Card -->
-            <div class="col-md-6 mb-4">
-                <div class="card stats-card border-left-info">
-                    <div class="card-body">
-                        <div class="row no-gutters align-items-center">
-                            <div class="col mr-2">
-                                <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                                    NWS Automatic Ingestion
-                                </div>
-                                <div class="d-flex flex-column">
-                                    <div class="d-flex align-items-center mb-2">
-                                        <span id="nws-scheduler-status" class="me-2 font-weight-bold">
-                                            <i class="fas fa-stop-circle me-1"></i>Stopped
-                                        </span>
-                                        <button id="nws-scheduler-play-btn" class="btn btn-sm btn-success me-1" onclick="onPlayNWSScheduler()" title="Start NWS automatic ingestion">
-                                            <i class="fas fa-play"></i>
-                                        </button>
-                                        <button id="nws-scheduler-pause-btn" class="btn btn-sm btn-warning" onclick="onPauseNWSScheduler()" style="display: none;" title="Stop NWS automatic ingestion">
-                                            <i class="fas fa-pause"></i>
-                                        </button>
-                                    </div>
-                                    <div id="nws-ingestion-progress" class="small text-muted" style="display: none;">
-                                        <div id="nws-progress-text">Initializing...</div>
-                                        <div class="progress mt-1" style="height: 4px;">
-                                            <div id="nws-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated bg-info" style="width: 0%"></div>
-                                        </div>
-                                    </div>
-                                    <div id="nws-next-ingestion-countdown" class="small text-muted" style="display: none;">
-                                        Next Ingestion: <span id="nws-countdown-timer">--</span>
-                                    </div>
-                                    <div id="nws-last-ingestion-result" class="small" style="display: none;">
-                                        <span id="nws-result-text"></span>
-                                    </div>
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card stats-card border-left-info">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                            Automatic Ingestion
+                        </div>
+                        <div class="d-flex flex-column">
+                            <div class="d-flex align-items-center mb-2">
+                                <span id="scheduler-status" class="me-2 font-weight-bold">
+                                    <i class="fas fa-stop-circle me-1"></i>Stopped
+                                </span>
+                                <button id="scheduler-play-btn" class="btn btn-sm btn-success me-1" onclick="onPlayScheduler()" title="Start automatic ingestion">
+                                    <i class="fas fa-play"></i>
+                                </button>
+                                <button id="scheduler-pause-btn" class="btn btn-sm btn-warning" onclick="onPauseScheduler()" style="display: none;" title="Stop automatic ingestion">
+                                    <i class="fas fa-pause"></i>
+                                </button>
+                            </div>
+                            <div id="ingestion-progress" class="small text-muted" style="display: none;">
+                                <div id="progress-text">Initializing...</div>
+                                <div class="progress mt-1" style="height: 4px;">
+                                    <div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" style="width: 0%"></div>
                                 </div>
                             </div>
-                            <div class="col-auto">
-                                <i class="fas fa-server fa-2x text-gray-300"></i>
+                            <div id="next-ingestion-countdown" class="small text-muted" style="display: none;">
+                                Next Ingestion: <span id="countdown-timer">--</span>
+                            </div>
+                            <div id="last-ingestion-result" class="small" style="display: none;">
+                                <span id="result-text"></span>
                             </div>
                         </div>
                     </div>
-                </div>
-            </div>
-            
-            <!-- SPC Automatic Ingestion Card -->
-            <div class="col-md-6 mb-4">
-                <div class="card stats-card border-left-warning">
-                    <div class="card-body">
-                        <div class="row no-gutters align-items-center">
-                            <div class="col mr-2">
-                                <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                    SPC Automatic Ingestion
-                                </div>
-                                <div class="d-flex flex-column">
-                                    <div class="d-flex align-items-center mb-2">
-                                        <span id="spc-scheduler-status" class="me-2 font-weight-bold">
-                                            <i class="fas fa-stop-circle me-1"></i>Stopped
-                                        </span>
-                                        <button id="spc-scheduler-play-btn" class="btn btn-sm btn-success me-1" onclick="onPlaySPCScheduler()" title="Start SPC automatic ingestion">
-                                            <i class="fas fa-play"></i>
-                                        </button>
-                                        <button id="spc-scheduler-pause-btn" class="btn btn-sm btn-warning" onclick="onPauseSPCScheduler()" style="display: none;" title="Stop SPC automatic ingestion">
-                                            <i class="fas fa-pause"></i>
-                                        </button>
-                                    </div>
-                                    <div id="spc-ingestion-progress" class="small text-muted" style="display: none;">
-                                        <div id="spc-progress-text">Initializing...</div>
-                                        <div class="progress mt-1" style="height: 4px;">
-                                            <div id="spc-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated bg-warning" style="width: 0%"></div>
-                                        </div>
-                                    </div>
-                                    <div id="spc-next-ingestion-countdown" class="small text-muted" style="display: none;">
-                                        Next Ingestion: <span id="spc-countdown-timer">--</span>
-                                    </div>
-                                    <div id="spc-last-ingestion-result" class="small" style="display: none;">
-                                        <span id="spc-result-text"></span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-auto">
-                                <i class="fas fa-cloud-bolt fa-2x text-gray-300"></i>
-                            </div>
-                        </div>
+                    <div class="col-auto">
+                        <i class="fas fa-server fa-2x text-gray-300"></i>
                     </div>
                 </div>
             </div>
