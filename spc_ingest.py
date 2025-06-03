@@ -111,8 +111,13 @@ class SPCIngestService:
             
             logger.info(f"First 500 chars: {repr(response.text[:500])}")
             
+            # Sanitize CSV content - remove null characters that cause PostgreSQL errors
+            clean_content = response.text.replace('\x00', '')
+            if len(clean_content) != len(response.text):
+                logger.warning(f"Removed {len(response.text) - len(clean_content)} null characters from CSV")
+            
             # Parse CSV content
-            result = self._parse_spc_csv(response.text, report_date)
+            result = self._parse_spc_csv(clean_content, report_date)
             
             # Check if we have more reports than before
             existing_count = SPCReport.query.filter(
