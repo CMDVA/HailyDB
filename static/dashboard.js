@@ -781,15 +781,25 @@ async function loadNextWeek() {
                             ? '<span class="badge bg-success">MATCH</span>'
                             : result.match_status === 'MISMATCH'
                             ? '<span class="badge bg-danger">MISMATCH</span>'
-                            : '<span class="badge bg-warning">PENDING</span>';
+                            : result.match_status === 'SPC_UNAVAILABLE'
+                            ? '<span class="badge bg-warning">PENDING</span>'
+                            : '<span class="badge bg-secondary">UNKNOWN</span>';
                         
-                        const spcCount = result.spc_live_count !== null ? result.spc_live_count : 'N/A';
+                        // Use color-coded count display to match first 7 days
+                        const hailyBadgeClass = result.match_status === 'MATCH' ? 'bg-success' : 'bg-primary';
+                        const spcBadgeClass = result.match_status === 'MATCH' ? 'bg-success' : 'bg-secondary';
+                        
+                        const hailydbDisplay = `<span class="badge ${hailyBadgeClass}">${result.hailydb_count}</span>`;
+                        const spcDisplay = result.spc_live_count !== null 
+                            ? `<span class="badge ${spcBadgeClass}">${result.spc_live_count}</span>`
+                            : 'N/A';
+                        
                         const dateForUrl = result.date.replace(/-/g, '').slice(2); // Convert 2025-05-21 to 250521
-                        const externalLink = `<a href="https://www.spc.noaa.gov/climo/reports/${dateForUrl}_rpts.html" target="_blank" class="btn btn-xs btn-outline-primary me-1">
+                        const externalLink = `<a href="https://www.spc.noaa.gov/climo/reports/${dateForUrl}_rpts_filtered.csv" target="_blank" class="btn btn-xs btn-outline-primary me-1">
                             <i class="fas fa-external-link-alt"></i>
                         </a>`;
-                        const reuploadButton = result.match_status === 'MISMATCH' ? 
-                            `<button class="btn btn-xs btn-outline-warning" onclick="forceReingestion('${result.date}', this)">
+                        const reuploadButton = result.match_status !== 'MATCH' ? 
+                            `<button class="btn btn-xs btn-outline-warning" onclick="triggerSPCReupload('${result.date}')">
                                 <i class="fas fa-sync-alt"></i>
                             </button>` : 
                             `<button class="btn btn-xs btn-outline-secondary" disabled>
@@ -800,8 +810,8 @@ async function loadNextWeek() {
                         const newRow = document.createElement('tr');
                         newRow.innerHTML = `
                             <td>${result.date}</td>
-                            <td>${result.hailydb_count}</td>
-                            <td>${spcCount}</td>
+                            <td>${hailydbDisplay}</td>
+                            <td>${spcDisplay}</td>
                             <td>${statusBadge}</td>
                             <td>${actionButtons}</td>
                         `;
