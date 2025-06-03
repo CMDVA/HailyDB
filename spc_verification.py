@@ -146,21 +146,38 @@ class SPCVerificationService:
     def trigger_reupload_for_date(self, check_date: date) -> Dict:
         """
         Trigger re-upload of SPC data for a specific date when mismatch is detected
+        Deletes existing data for the date first, then re-ingests
         """
         from spc_ingest import SPCIngestService
+        from models import SPCReport
         
         try:
+            # First, delete existing SPC reports for this date
+            existing_count = SPCReport.query.filter(SPCReport.report_date == check_date).count()
+            if existing_count > 0:
+                SPCReport.query.filter(SPCReport.report_date == check_date).delete()
+                self.db.commit()
+                logger.info(f"Deleted {existing_count} existing SPC reports for {check_date}")
+            
+            # Now re-ingest the data
             spc_ingester = SPCIngestService(self.db)
             result = spc_ingester.poll_spc_reports(check_date)
             
             return {
                 'success': True,
                 'date': check_date.strftime('%Y-%m-%d'),
-                'message': f"Re-uploaded SPC data for {check_date}",
-                'reports_ingested': result.get('total_reports', 0)
+                'message': f"Re-uploaded SPC data for {check_date} (replaced {existing_count} existing reports)",
+                'reports_ingested': result.get('total_reports', 0),
+                'reports_replaced': existing_count
             }
             
         except Exception as e:
+            # Rollback any partial changes
+            try:
+                self.db.rollback()
+            except:
+                pass
+                
             logger.error(f"Error re-uploading SPC data for {check_date}: {e}")
             return {
                 'success': False,
