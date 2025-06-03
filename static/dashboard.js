@@ -28,6 +28,19 @@ function initializeDashboard() {
         // Calculate next poll time
         updateNextPollTime();
         
+        // Load today's data for cron verification
+        loadTodaysAlerts();
+        loadTodaysSPCEvents();
+        
+        // Set up automatic refresh every 30 seconds
+        setInterval(() => {
+            loadTodaysAlerts();
+            loadTodaysSPCEvents();
+            updateStatusIndicator();
+            updateNextPollTime();
+            updateLastUpdateTime();
+        }, 30000);
+        
         console.log('Dashboard initialized successfully');
     } catch (error) {
         console.error('Error initializing dashboard:', error);
@@ -61,40 +74,131 @@ function updateNextPollTime() {
     }
 }
 
-// Load recent alerts into table
-async function loadRecentAlerts() {
+// Load today's alerts for cron verification
+async function loadTodaysAlerts() {
     try {
-        const response = await fetch('/alerts?format=json&per_page=10');
+        const today = new Date().toISOString().split('T')[0];
+        const response = await fetch(`/alerts?format=json&per_page=50`);
         const data = await response.json();
         
-        const tableContainer = document.getElementById('recent-alerts-table');
+        const tableContainer = document.getElementById('todays-alerts-table');
         if (!tableContainer) return;
         
-        if (data.alerts && data.alerts.length > 0) {
-            let html = '<div class="table-responsive"><table class="table table-striped">';
-            html += '<thead><tr><th>Event</th><th>Area</th><th>Severity</th><th>Time</th></tr></thead>';
-            html += '<tbody>';
+        // Filter to today's alerts
+        const todaysAlerts = data.alerts ? data.alerts.filter(alert => {
+            const alertDate = new Date(alert.ingested_at || alert.effective).toISOString().split('T')[0];
+            return alertDate === today;
+        }) : [];
+        
+        if (todaysAlerts.length > 0) {
+            // Group by event type for compact breakdown
+            const alertsByType = todaysAlerts.reduce((acc, alert) => {
+                const eventType = alert.event || 'Unknown';
+                acc[eventType] = (acc[eventType] || 0) + 1;
+                return acc;
+            }, {});
             
-            data.alerts.forEach(alert => {
-                const time = new Date(alert.effective).toLocaleString();
-                html += `<tr>
-                    <td><a href="/alerts/${alert.id}">${alert.event}</a></td>
-                    <td>${alert.area_desc ? alert.area_desc.substring(0, 50) + '...' : 'N/A'}</td>
-                    <td><span class="badge bg-${getSeverityColor(alert.severity)}">${alert.severity || 'N/A'}</span></td>
-                    <td>${time}</td>
-                </tr>`;
+            let html = `<div class="mb-2"><strong>${todaysAlerts.length} alerts ingested today</strong></div>`;
+            html += '<div class="row text-center mb-2">';
+            
+            // Show top 3 alert types
+            const sortedTypes = Object.entries(alertsByType)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 3);
+            
+            sortedTypes.forEach(([type, count]) => {
+                const shortType = type.replace(' Warning', '').replace(' Watch', '').replace(' Advisory', '');
+                html += `<div class="col-4"><div class="h6 text-primary">${count}</div><small>${shortType}</small></div>`;
             });
             
-            html += '</tbody></table></div>';
+            html += '</div>';
+            
+            // Show recent alerts list (compact)
+            if (todaysAlerts.length > 0) {
+                html += '<div class="small">';
+                todaysAlerts.slice(0, 5).forEach(alert => {
+                    const time = new Date(alert.effective).toLocaleTimeString();
+                    html += `<div class="d-flex justify-content-between border-bottom py-1">
+                        <span>${alert.event}</span>
+                        <span class="text-muted">${time}</span>
+                    </div>`;
+                });
+                html += '</div>';
+            }
+            
             tableContainer.innerHTML = html;
         } else {
-            tableContainer.innerHTML = '<p class="text-muted">No recent alerts found.</p>';
+            tableContainer.innerHTML = '<div class="text-center py-3"><div class="h5 text-warning">0</div><small class="text-muted">No alerts ingested today</small></div>';
         }
     } catch (error) {
-        console.error('Error loading recent alerts:', error);
-        const tableContainer = document.getElementById('recent-alerts-table');
+        console.error('Error loading today\'s alerts:', error);
+        const tableContainer = document.getElementById('todays-alerts-table');
         if (tableContainer) {
-            tableContainer.innerHTML = '<p class="text-danger">Error loading alerts.</p>';
+            tableContainer.innerHTML = '<p class="text-danger">Error loading today\'s alerts.</p>';
+        }
+    }
+}
+
+// Load today's SPC events for cron verification
+async function loadTodaysSPCEvents() {
+    try {
+        const today = new Date().toISOString().split('T')[0];
+        const response = await fetch(`/spc/reports?format=json`);
+        const data = await response.json();
+        
+        const container = document.getElementById('todays-spc-events');
+        if (!container) return;
+        
+        // Filter to today's SPC events
+        const todaysEvents = data.reports ? data.reports.filter(report => {
+            return report.report_date === today;
+        }) : [];
+        
+        if (todaysEvents.length > 0) {
+            // Group by type
+            const eventsByType = todaysEvents.reduce((acc, event) => {
+                acc[event.report_type] = (acc[event.report_type] || 0) + 1;
+                return acc;
+            }, {});
+            
+            let html = `<div class="mb-2"><strong>${todaysEvents.length} SPC events today</strong></div>`;
+            html += '<div class="row text-center mb-2">';
+            
+            // Always show all three types with 0 if none
+            const tornado = eventsByType.tornado || 0;
+            const wind = eventsByType.wind || 0;
+            const hail = eventsByType.hail || 0;
+            
+            html += `<div class="col-4"><div class="h6 text-danger">${tornado}</div><small>Tornado</small></div>`;
+            html += `<div class="col-4"><div class="h6 text-warning">${wind}</div><small>Wind</small></div>`;
+            html += `<div class="col-4"><div class="h6 text-info">${hail}</div><small>Hail</small></div>`;
+            
+            html += '</div>';
+            
+            // Show recent events by location (compact)
+            if (todaysEvents.length > 0) {
+                html += '<div class="small">';
+                todaysEvents.slice(0, 5).forEach(event => {
+                    const location = event.location || `${event.county}, ${event.state}`;
+                    const typeIcon = event.report_type === 'tornado' ? '🌪️' : 
+                                   event.report_type === 'wind' ? '💨' : '🧊';
+                    html += `<div class="d-flex justify-content-between border-bottom py-1">
+                        <span>${typeIcon} ${location}</span>
+                        <span class="text-muted">${event.time_utc || ''}</span>
+                    </div>`;
+                });
+                html += '</div>';
+            }
+            
+            container.innerHTML = html;
+        } else {
+            container.innerHTML = '<div class="text-center py-3"><div class="h5 text-warning">0</div><small class="text-muted">No SPC events today</small></div>';
+        }
+    } catch (error) {
+        console.error('Error loading today\'s SPC events:', error);
+        const container = document.getElementById('todays-spc-events');
+        if (container) {
+            container.innerHTML = '<p class="text-danger">Error loading today\'s SPC events.</p>';
         }
     }
 }

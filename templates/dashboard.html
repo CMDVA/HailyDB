@@ -204,18 +204,7 @@
                     </div>
                 </div>
                 
-                <!-- Data Integrity Verification -->
-                <hr>
-                <h6 class="text-muted mb-3">Data Integrity Verification</h6>
-                
-                <div id="integrity-verification-container">
-                    <div class="text-center py-3">
-                        <button class="btn btn-outline-primary" onclick="loadIntegrityVerification()">
-                            <i class="fas fa-shield-alt me-1"></i>Check Data Integrity
-                        </button>
-                        <p class="text-muted small mt-2">Compare HailyDB counts with live SPC data</p>
-                    </div>
-                </div>
+
             </div>
         </div>
     </div>
@@ -304,19 +293,35 @@
     </div>
 </div>
 
-<!-- Recent Alerts Table -->
+<!-- Today's Data Verification -->
 <div class="row">
-    <div class="col-12">
+    <div class="col-md-6">
         <div class="card shadow mb-4">
             <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                <h6 class="m-0 font-weight-bold text-primary">Recent Alerts</h6>
+                <h6 class="m-0 font-weight-bold text-primary">Today's Alerts</h6>
                 <a href="{{ url_for('get_alerts') }}" class="btn btn-sm btn-outline-primary">
                     View All <i class="fas fa-arrow-right ms-1"></i>
                 </a>
             </div>
             <div class="card-body">
-                <div id="recent-alerts-table">
-                    Loading recent alerts...
+                <div id="todays-alerts-table">
+                    Loading today's alerts...
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">Today's SPC Events</h6>
+                <a href="/spc/reports" class="btn btn-sm btn-outline-primary">
+                    View All <i class="fas fa-arrow-right ms-1"></i>
+                </a>
+            </div>
+            <div class="card-body">
+                <div id="todays-spc-events">
+                    Loading today's SPC events...
                 </div>
             </div>
         </div>
