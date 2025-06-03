@@ -652,7 +652,7 @@ def spc_verify_today():
         
         today = date.today()
         
-        # Try today and previous days until we find SPC data
+        # Check last 7 days including today
         verification_results = []
         
         for days_back in range(7):  # Check last 7 days
@@ -684,14 +684,13 @@ def spc_verify_today():
                 })
                 
             except requests.RequestException:
-                # SPC file not available for this date
-                if hailydb_count > 0:
-                    verification_results.append({
-                        'date': check_date.strftime('%Y-%m-%d'),
-                        'hailydb_count': hailydb_count,
-                        'spc_live_count': None,
-                        'match_status': 'PENDING'
-                    })
+                # SPC file not available for this date - always show for reference
+                verification_results.append({
+                    'date': check_date.strftime('%Y-%m-%d'),
+                    'hailydb_count': hailydb_count,
+                    'spc_live_count': None,
+                    'match_status': 'PENDING' if check_date == today else 'UNKNOWN'
+                })
         
         return jsonify({
             'status': 'success',

@@ -194,7 +194,7 @@ async function loadTodaysSPCEvents() {
                     <td><span class="badge bg-primary">${result.hailydb_count}</span></td>
                     <td><span class="badge bg-secondary">${spcCount}</span></td>
                     <td>${statusBadge}</td>
-                    <td><button class="btn btn-sm btn-outline-primary" onclick="forceReingestion('${result.date}')" title="Force re-ingestion for this date">
+                    <td><button class="btn btn-sm btn-outline-primary" onclick="forceReingestion('${result.date}', this)" title="Force re-ingestion for this date" data-date="${result.date}">
                         <i class="fas fa-sync-alt"></i>
                     </button></td>
                 </tr>`;
@@ -463,57 +463,81 @@ function displayIntegrityResults(results, summary) {
 }
 
 // Force re-ingestion for a specific date
-async function forceReingestion(date) {
-    const button = event.target.closest('button');
+async function forceReingestion(date, buttonElement) {
+    console.log(`[SPC REIMPORT] Starting re-ingestion for date: ${date}`);
+    
+    const button = buttonElement || event.target.closest('button');
     const originalContent = button.innerHTML;
+    const originalClass = button.className;
+    
+    console.log(`[SPC REIMPORT] Button found:`, button);
+    console.log(`[SPC REIMPORT] Original content:`, originalContent);
     
     // Show loading state
     button.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
     button.disabled = true;
+    button.className = 'btn btn-sm btn-warning';
+    
+    console.log(`[SPC REIMPORT] Button set to loading state`);
     
     try {
-        const response = await fetch(`/internal/spc-reupload/${date}`, {
+        const url = `/internal/spc-reupload/${date}`;
+        console.log(`[SPC REIMPORT] Making POST request to: ${url}`);
+        
+        const response = await fetch(url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             }
         });
         
-        const result = await response.json();
+        console.log(`[SPC REIMPORT] Response status: ${response.status}`);
+        console.log(`[SPC REIMPORT] Response headers:`, response.headers);
         
-        if (result.success) {
+        const result = await response.json();
+        console.log(`[SPC REIMPORT] Response body:`, result);
+        
+        if (response.ok && result.success) {
+            console.log(`[SPC REIMPORT] Success! Re-ingestion completed for ${date}`);
+            
             // Show success temporarily
-            button.innerHTML = '<i class="fas fa-check text-success"></i>';
+            button.innerHTML = '<i class="fas fa-check"></i>';
             button.className = 'btn btn-sm btn-success';
             
             // Refresh the SPC events data after a short delay
             setTimeout(() => {
+                console.log(`[SPC REIMPORT] Refreshing SPC events data...`);
                 loadTodaysSPCEvents();
-            }, 1000);
+            }, 1500);
             
         } else {
+            console.error(`[SPC REIMPORT] Error response:`, result);
+            
             // Show error temporarily
-            button.innerHTML = '<i class="fas fa-times text-danger"></i>';
+            button.innerHTML = '<i class="fas fa-times"></i>';
             button.className = 'btn btn-sm btn-danger';
             
             setTimeout(() => {
+                console.log(`[SPC REIMPORT] Restoring button to original state`);
                 button.innerHTML = originalContent;
-                button.className = 'btn btn-sm btn-outline-primary';
+                button.className = originalClass;
                 button.disabled = false;
-            }, 2000);
+            }, 3000);
         }
     } catch (error) {
-        console.error('Error triggering re-ingestion:', error);
+        console.error(`[SPC REIMPORT] Network/parsing error:`, error);
+        console.error(`[SPC REIMPORT] Error stack:`, error.stack);
         
         // Show error state
-        button.innerHTML = '<i class="fas fa-times text-danger"></i>';
+        button.innerHTML = '<i class="fas fa-exclamation-triangle"></i>';
         button.className = 'btn btn-sm btn-danger';
         
         setTimeout(() => {
+            console.log(`[SPC REIMPORT] Restoring button after error`);
             button.innerHTML = originalContent;
-            button.className = 'btn btn-sm btn-outline-primary';
+            button.className = originalClass;
             button.disabled = false;
-        }, 2000);
+        }, 3000);
     }
 }
 

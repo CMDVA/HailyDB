@@ -165,51 +165,140 @@
         </div>
     </div>
 </div>
-
-<!-- Charts Row -->
-<div class="row mb-4">
-    <!-- SPC Events Overview -->
-    <div class="col-12">
-        <div class="card shadow mb-4">
-            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                <h6 class="m-0 font-weight-bold text-primary">SPC Events Overview</h6>
-                <div class="btn-group" role="group">
-                    <a href="/spc/reports" class="btn btn-sm btn-outline-primary">
-                        <i class="fas fa-eye me-1"></i>View All Events
-                    </a>
-                    <a href="/internal/spc-verify" class="btn btn-sm btn-outline-success">
-                        <i class="fas fa-shield-alt me-1"></i>Verify Data Integrity
-                    </a>
-                </div>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-4">
-                        <div class="text-center border-end">
-                            <div class="h2 text-danger mb-0">{{ stats.get('spc_tornado', 0) }}</div>
-                            <div class="text-muted">Tornado Reports</div>
-                        </div>
+        <!-- Today's Data Verification -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                        <h6 class="m-0 font-weight-bold text-primary">Today's Alerts</h6>
+                        <a href="{{ url_for('get_alerts') }}" class="btn btn-sm btn-outline-primary">
+                            View All <i class="fas fa-arrow-right ms-1"></i>
+                        </a>
                     </div>
-                    <div class="col-md-4">
-                        <div class="text-center border-end">
-                            <div class="h2 text-warning mb-0">{{ stats.get('spc_wind', 0) }}</div>
-                            <div class="text-muted">Wind Reports</div>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="text-center">
-                            <div class="h2 text-info mb-0">{{ stats.get('spc_hail', 0) }}</div>
-                            <div class="text-muted">Hail Reports</div>
+                    <div class="card-body">
+                        <div id="todays-alerts-table">
+                            Loading today's alerts...
                         </div>
                     </div>
                 </div>
-                
-
             </div>
         </div>
-    </div>
-</div>
 
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                        <h6 class="m-0 font-weight-bold text-primary">Today's SPC Events</h6>
+                        <a href="/spc/reports" class="btn btn-sm btn-outline-primary">
+                            View All <i class="fas fa-arrow-right ms-1"></i>
+                        </a>
+                    </div>
+                    <div class="card-body">
+                        <div id="todays-spc-events">
+                            Loading today's SPC events...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+            </div> <!-- End Dashboard Tab -->
+
+            <!-- Alerts Tab -->
+            <div class="tab-pane fade" id="alerts" role="tabpanel">
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card shadow mb-4">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary">Alert Search</h6>
+                            </div>
+                            <div class="card-body">
+                                <form class="row g-3 mb-4">
+                                    <div class="col-md-3">
+                                        <label for="startDate" class="form-label">Start Date</label>
+                                        <input type="date" class="form-control" id="startDate" name="start_date">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="endDate" class="form-label">End Date</label>
+                                        <input type="date" class="form-control" id="endDate" name="end_date">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="eventType" class="form-label">Event Type</label>
+                                        <select class="form-select" id="eventType" name="event">
+                                            <option value="">All Types</option>
+                                            <option value="Tornado Warning">Tornado Warning</option>
+                                            <option value="Severe Thunderstorm Warning">Severe Thunderstorm Warning</option>
+                                            <option value="Flash Flood Warning">Flash Flood Warning</option>
+                                            <option value="Winter Storm Warning">Winter Storm Warning</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="severity" class="form-label">Severity</label>
+                                        <select class="form-select" id="severity" name="severity">
+                                            <option value="">All Severities</option>
+                                            <option value="Extreme">Extreme</option>
+                                            <option value="Severe">Severe</option>
+                                            <option value="Moderate">Moderate</option>
+                                            <option value="Minor">Minor</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-12">
+                                        <button type="submit" class="btn btn-primary">Search Alerts</button>
+                                        <button type="reset" class="btn btn-secondary">Clear</button>
+                                    </div>
+                                </form>
+                                <div id="alerts-results">
+                                    <p class="text-muted">Use the filters above to search for alerts.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SPC Events Tab -->
+            <div class="tab-pane fade" id="spc-events" role="tabpanel">
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card shadow mb-4">
+                            <div class="card-header py-3">
+                                <h6 class="m-0 font-weight-bold text-primary">SPC Event Search</h6>
+                            </div>
+                            <div class="card-body">
+                                <form class="row g-3 mb-4">
+                                    <div class="col-md-3">
+                                        <label for="spcStartDate" class="form-label">Start Date</label>
+                                        <input type="date" class="form-control" id="spcStartDate" name="start_date">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="spcEndDate" class="form-label">End Date</label>
+                                        <input type="date" class="form-control" id="spcEndDate" name="end_date">
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="reportType" class="form-label">Report Type</label>
+                                        <select class="form-select" id="reportType" name="report_type">
+                                            <option value="">All Types</option>
+                                            <option value="tornado">Tornado</option>
+                                            <option value="wind">Wind</option>
+                                            <option value="hail">Hail</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="col-12">
+                                        <button type="submit" class="btn btn-primary">Search SPC Events</button>
+                                        <button type="reset" class="btn btn-secondary">Clear</button>
+                                    </div>
+                                </form>
+                                <div id="spc-results">
+                                    <p class="text-muted">Use the filters above to search for SPC events.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div> <!-- End Tab Content -->
 <!-- System Status Row -->
 <div class="row mb-4">
     <div class="col-xl-8">
@@ -293,140 +382,7 @@
     </div>
 </div>
 
-<!-- Today's Data Verification -->
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="card shadow mb-4">
-            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                <h6 class="m-0 font-weight-bold text-primary">Today's Alerts</h6>
-                <a href="{{ url_for('get_alerts') }}" class="btn btn-sm btn-outline-primary">
-                    View All <i class="fas fa-arrow-right ms-1"></i>
-                </a>
-            </div>
-            <div class="card-body">
-                <div id="todays-alerts-table">
-                    Loading today's alerts...
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
 
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="card shadow mb-4">
-            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                <h6 class="m-0 font-weight-bold text-primary">Today's SPC Events</h6>
-                <a href="/spc/reports" class="btn btn-sm btn-outline-primary">
-                    View All <i class="fas fa-arrow-right ms-1"></i>
-                </a>
-            </div>
-            <div class="card-body">
-                <div id="todays-spc-events">
-                    Loading today's SPC events...
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-    </div> <!-- End Dashboard Tab -->
-
-    <!-- Alerts Tab -->
-    <div class="tab-pane fade" id="alerts" role="tabpanel">
-        <div class="row">
-            <div class="col-12">
-                <div class="card shadow mb-4">
-                    <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary">Alert Search</h6>
-                    </div>
-                    <div class="card-body">
-                        <form class="row g-3 mb-4">
-                            <div class="col-md-3">
-                                <label for="startDate" class="form-label">Start Date</label>
-                                <input type="date" class="form-control" id="startDate" name="start_date">
-                            </div>
-                            <div class="col-md-3">
-                                <label for="endDate" class="form-label">End Date</label>
-                                <input type="date" class="form-control" id="endDate" name="end_date">
-                            </div>
-                            <div class="col-md-3">
-                                <label for="eventType" class="form-label">Event Type</label>
-                                <select class="form-select" id="eventType" name="event">
-                                    <option value="">All Types</option>
-                                    <option value="Tornado Warning">Tornado Warning</option>
-                                    <option value="Severe Thunderstorm Warning">Severe Thunderstorm Warning</option>
-                                    <option value="Flash Flood Warning">Flash Flood Warning</option>
-                                    <option value="Winter Storm Warning">Winter Storm Warning</option>
-                                </select>
-                            </div>
-                            <div class="col-md-3">
-                                <label for="severity" class="form-label">Severity</label>
-                                <select class="form-select" id="severity" name="severity">
-                                    <option value="">All Severities</option>
-                                    <option value="Extreme">Extreme</option>
-                                    <option value="Severe">Severe</option>
-                                    <option value="Moderate">Moderate</option>
-                                    <option value="Minor">Minor</option>
-                                </select>
-                            </div>
-                            <div class="col-12">
-                                <button type="submit" class="btn btn-primary">Search Alerts</button>
-                                <button type="reset" class="btn btn-secondary">Clear</button>
-                            </div>
-                        </form>
-                        <div id="alerts-results">
-                            <p class="text-muted">Use the filters above to search for alerts.</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- SPC Events Tab -->
-    <div class="tab-pane fade" id="spc-events" role="tabpanel">
-        <div class="row">
-            <div class="col-12">
-                <div class="card shadow mb-4">
-                    <div class="card-header py-3">
-                        <h6 class="m-0 font-weight-bold text-primary">SPC Event Search</h6>
-                    </div>
-                    <div class="card-body">
-                        <form class="row g-3 mb-4">
-                            <div class="col-md-3">
-                                <label for="spcStartDate" class="form-label">Start Date</label>
-                                <input type="date" class="form-control" id="spcStartDate" name="start_date">
-                            </div>
-                            <div class="col-md-3">
-                                <label for="spcEndDate" class="form-label">End Date</label>
-                                <input type="date" class="form-control" id="spcEndDate" name="end_date">
-                            </div>
-                            <div class="col-md-3">
-                                <label for="reportType" class="form-label">Report Type</label>
-                                <select class="form-select" id="reportType" name="report_type">
-                                    <option value="">All Types</option>
-                                    <option value="tornado">Tornado</option>
-                                    <option value="wind">Wind</option>
-                                    <option value="hail">Hail</option>
-                                </select>
-                            </div>
-
-                            <div class="col-12">
-                                <button type="submit" class="btn btn-primary">Search SPC Events</button>
-                                <button type="reset" class="btn btn-secondary">Clear</button>
-                            </div>
-                        </form>
-                        <div id="spc-results">
-                            <p class="text-muted">Use the filters above to search for SPC events.</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-</div> <!-- End Tab Content -->
 
 <!-- Hidden data for JavaScript -->
 <script type="application/json" id="dashboard-data">
