@@ -111,12 +111,10 @@ async function loadTodaysAlerts() {
                 'Wind Advisory'
             ];
             const sortedTypes = Object.entries(alertsByType)
+                .filter(([type, count]) => priorityTypes.includes(type))
                 .sort((a, b) => {
-                    // Prioritize important weather events
-                    const aPriority = priorityTypes.includes(a[0]) ? 0 : 1;
-                    const bPriority = priorityTypes.includes(b[0]) ? 0 : 1;
-                    if (aPriority !== bPriority) return aPriority - bPriority;
-                    return b[1] - a[1]; // Then by count
+                    // Sort by count descending
+                    return b[1] - a[1];
                 })
                 .slice(0, 6);
             
