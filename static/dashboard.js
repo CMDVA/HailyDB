@@ -1389,7 +1389,7 @@ async function updateSchedulerStatus() {
         const data = await response.json();
         
         if (data.success) {
-            const status = data.status;
+            const status = data.scheduler;
             
             // Update NWS status
             const nwsStatus = document.getElementById('nws-status');
@@ -1403,11 +1403,9 @@ async function updateSchedulerStatus() {
                 if (nwsPlayBtn) nwsPlayBtn.style.display = 'none';
                 if (nwsPauseBtn) nwsPauseBtn.style.display = 'inline-block';
                 
-                // Calculate next NWS poll countdown
-                if (status.next_nws_poll && nwsCountdown) {
-                    const nextPoll = new Date(status.next_nws_poll);
-                    const now = new Date();
-                    const secondsLeft = Math.max(0, Math.floor((nextPoll - now) / 1000));
+                // Display NWS countdown from API
+                if (status.nws_countdown !== undefined && nwsCountdown) {
+                    const secondsLeft = Math.max(0, status.nws_countdown);
                     const minutes = Math.floor(secondsLeft / 60);
                     const seconds = secondsLeft % 60;
                     nwsCountdown.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
@@ -1428,11 +1426,9 @@ async function updateSchedulerStatus() {
                 if (spcStatus) spcStatus.textContent = 'Running';
                 if (spcStatus) spcStatus.className = 'text-success fw-bold';
                 
-                // Calculate next SPC poll countdown
-                if (status.next_spc_poll && spcCountdown) {
-                    const nextPoll = new Date(status.next_spc_poll);
-                    const now = new Date();
-                    const secondsLeft = Math.max(0, Math.floor((nextPoll - now) / 1000));
+                // Display SPC countdown from API
+                if (status.spc_countdown !== undefined && spcCountdown) {
+                    const secondsLeft = Math.max(0, status.spc_countdown);
                     const minutes = Math.floor(secondsLeft / 60);
                     const seconds = secondsLeft % 60;
                     spcCountdown.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
