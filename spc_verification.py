@@ -186,6 +186,9 @@ class SPCVerificationService:
             db.session.close()
             from app import db as fresh_db
             
+            # Ensure fresh session is clean
+            fresh_db.session.rollback()
+            
             # Now re-ingest the data with fresh session
             spc_ingester = SPCIngestService(fresh_db.session)
             result = spc_ingester.poll_spc_reports(check_date)

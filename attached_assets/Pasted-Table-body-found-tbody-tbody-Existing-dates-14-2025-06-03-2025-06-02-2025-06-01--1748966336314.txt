@@ -1,0 +1,50 @@
+Table body found: 
+<tbody>…</tbody>
+Existing dates: 
+(14) ["2025-06-03", "2025-06-02", "2025-06-01", "2025-05-31", "2025-05-30", "2025-05-29", "2025-05-28", "2025-05-27", "2025-05-26", "2025-05-25", "2025-05-24", "2025-05-23", "2025-05-22", "2025-05-21"]
+New results after filtering: 7 
+(7) [{…}, {…}, {…}, {…}, {…}, {…}, {…}]
+Added 7 new dates to the table
+Loading previous week SPC data from 2025-05-07 to 2025-05-13
+API Response: 
+Object {date_range: {…}, results: Array(7), summary: {…}}
+Results received: 7
+Table body found: 
+<tbody>…</tbody>
+Existing dates: 
+(21) ["2025-06-03", "2025-06-02", "2025-06-01", "2025-05-31", "2025-05-30", "2025-05-29", "2025-05-28", "2025-05-27", "2025-05-26", "2025-05-25", "2025-05-24", "2025-05-23", "2025-05-22", "2025-05-21", "2025-05-20", "2025-05-19", "2025-05-18", "2025-05-17", "2025-05-16", "2025-05-15", "2025-05-14"]
+New results after filtering: 7 
+(7) [{…}, {…}, {…}, {…}, {…}, {…}, {…}]
+Added 7 new dates to the table
+Loading previous week SPC data from 2025-04-30 to 2025-05-06
+API Response: 
+Object {date_range: {…}, results: Array(7), summary: {…}}
+Results received: 7
+Table body found: 
+<tbody>…</tbody>
+Existing dates: 
+(28) ["2025-06-03", "2025-06-02", "2025-06-01", "2025-05-31", "2025-05-30", "2025-05-29", "2025-05-28", "2025-05-27", "2025-05-26", "2025-05-25", "2025-05-24", "2025-05-23", "2025-05-22", "2025-05-21", "2025-05-20", "2025-05-19", "2025-05-18", "2025-05-17", "2025-05-16", "2025-05-15", "2025-05-14", "2025-05-13", "2025-05-12", "2025-05-11", "2025-05-10", "2025-05-09", "2025-05-08", "2025-05-07"]
+New results after filtering: 7 
+(7) [{…}, {…}, {…}, {…}, {…}, {…}, {…}]
+Added 7 new dates to the table
+[SPC REIMPORT] Starting re-ingestion for date: 2025-05-03
+[SPC REIMPORT] Button found: 
+<button class="btn btn-xs btn-outline-warning" onclick="forceReingestion('2025-05-03', this)">…</button>
+[SPC REIMPORT] Original content: 
+                                <i class="fas fa-sync-alt"></i>
+                            
+[SPC REIMPORT] Button set to loading state
+[SPC REIMPORT] Making POST request to: /internal/spc-reupload/2025-05-03
+[SPC REIMPORT] Response status: 200
+[SPC REIMPORT] Response headers: 
+Headers {append: ƒ, delete: ƒ, get: ƒ, getSetCookie: ƒ, has: ƒ, …}
+[SPC REIMPORT] Response body: 
+Object {date: "2025-05-03", message: "Failed to re-upload: This Session's transaction has been rolled back due to a previous exception…", success: false}
+[SPC REIMPORT] Error response: 
+Object {date: "2025-05-03", message: "Failed to re-upload: This Session's transaction has been rolled back due to a previous exception…", success: false}
+date: "2025-05-03"
+message: "Failed to re-upload: This Session's transaction has been rolled back due to a previous exception during flush. To begin a new transaction with this Session, first issue Session.rollback(). Original exception was: (raised as a result of Query-invoked autoflush; consider using a session.no_autoflush block if this flush is occurring prematurely)↵(psycopg2.errors.UniqueViolation) duplicate key value violates unique constraint "uq_spc_report_unique"↵DETAIL: Key (report_date, report_type, time_utc, latitude, longitude)=(2025-05-03, wind, 1940, 42.84, -71.99) already exists.↵↵[SQL: INSERT INTO spc_reports (report_date, report_type, time_utc, location, county, state, latitude, longitude, comments, magnitude, raw_csv_line) VALUES (%(report_date)s, %(report_type)s, %(time_utc)s, %(location)s, %(county)s, %(state)s, %(latitude)s, %(longitude)s, %(comments)s, %(magnitude)s::JSONB, %(raw_csv_line)s) RETURNING spc_reports.id, spc_reports.ingested_at]↵[parameters: {'report_date': datetime.date(2025, 5, 3), 'report_type': 'wind', 'time_utc': '1940', 'location': '3 NE Jaffrey', 'county': 'Cheshire', 'state': 'NH', 'latitude': 42.84, 'longitude': -71.99, 'comments': 'Reported by Weather Spotter... time estimated by radar. (GYX)', 'magnitude': '{"speed": "UNK"}', 'raw_csv_line': '1940,UNK,3 NE Jaffrey,Cheshire,NH,42.84,-71.99,Reported by Weather Spotter... time estimated by radar. (GYX)'}]↵(Background on this error at: https://sqlalche.me/e/20/gkpj) (Background on this error at: https://sqlalche.me/e/20/7s2a)"
+success: false
+[[Prototype]]: Object
+
+[SPC REIMPORT] Restoring button to original state

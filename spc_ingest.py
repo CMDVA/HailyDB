@@ -375,6 +375,8 @@ class SPCIngestService:
         except Exception as e:
             self.db.rollback()
             logger.error(f"Error committing reports: {e}")
+            # Clean up the session state
+            self.db.close()
             raise
             
         return counts
