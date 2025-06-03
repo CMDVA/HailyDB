@@ -452,13 +452,18 @@ async function loadTodaysSPCEvents() {
 async function loadNextWeek() {
     try {
         // Find the most recent date in the current table
-        const tableRows = document.querySelectorAll('#todays-spc-events tbody tr');
+        const container = document.getElementById('todays-spc-events');
+        const tableRows = container.querySelectorAll('tbody tr');
         let mostRecentDate = null;
         
+        // Get all existing dates first
+        const existingDates = [];
         tableRows.forEach(row => {
             const dateCell = row.querySelector('td:first-child');
-            if (dateCell) {
-                const date = new Date(dateCell.textContent);
+            if (dateCell && dateCell.textContent.trim()) {
+                const dateStr = dateCell.textContent.trim();
+                existingDates.push(dateStr);
+                const date = new Date(dateStr);
                 if (!mostRecentDate || date > mostRecentDate) {
                     mostRecentDate = date;
                 }
@@ -466,8 +471,9 @@ async function loadNextWeek() {
         });
         
         if (!mostRecentDate) {
-            // If no dates found, start from today
+            // If no dates found, start from yesterday (so next week starts today)
             mostRecentDate = new Date();
+            mostRecentDate.setDate(mostRecentDate.getDate() - 1);
         }
         
         // Calculate the next 7 days starting from the day after the most recent
@@ -481,83 +487,80 @@ async function loadNextWeek() {
         const startDateStr = startDate.toISOString().split('T')[0];
         const endDateStr = endDate.toISOString().split('T')[0];
         
-        // Show loading state
-        const container = document.getElementById('todays-spc-events');
-        const originalContent = container.innerHTML;
-        container.innerHTML = '<div class="text-center py-3"><i class="fas fa-spinner fa-spin"></i> Loading next week...</div>';
+        console.log(`Loading SPC data from ${startDateStr} to ${endDateStr}`);
+        
+        // Show loading message below existing content
+        const loadingDiv = document.createElement('div');
+        loadingDiv.className = 'text-center py-2';
+        loadingDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading next week...';
+        loadingDiv.id = 'loading-indicator';
+        container.appendChild(loadingDiv);
         
         // Fetch verification data for the date range
         const response = await fetch(`/internal/spc-verify?start_date=${startDateStr}&end_date=${endDateStr}&format=json`);
         const data = await response.json();
         
-        if (data.status === 'success' && data.results) {
-            // Append new results to existing table
-            let html = '<div class="table-responsive"><table class="table table-sm">';
-            html += '<thead><tr><th>Date</th><th>HailyDB</th><th>SPC Live</th><th>Status</th><th>Action</th></tr></thead>';
-            html += '<tbody>';
-            
-            // Get existing data and combine with new data
-            const existingRows = [];
-            tableRows.forEach(row => {
-                const cells = row.querySelectorAll('td');
-                if (cells.length >= 4) {
-                    existingRows.push({
-                        date: cells[0].textContent,
-                        hailydb_count: parseInt(cells[1].textContent) || 0,
-                        spc_live_count: cells[2].textContent === 'N/A' ? null : parseInt(cells[2].textContent),
-                        match_status: cells[3].querySelector('.badge').textContent
+        // Remove loading indicator
+        const loading = document.getElementById('loading-indicator');
+        if (loading) loading.remove();
+        
+        if (data.status === 'success' && data.results && data.results.length > 0) {
+            // Get the current table body
+            const tbody = container.querySelector('tbody');
+            if (tbody) {
+                // Filter out dates that already exist
+                const newResults = data.results.filter(result => 
+                    !existingDates.includes(result.date)
+                );
+                
+                if (newResults.length > 0) {
+                    // Add new rows to the existing table
+                    newResults.forEach(result => {
+                        const statusBadge = result.match_status === 'MATCH' 
+                            ? '<span class="badge bg-success">MATCH</span>'
+                            : result.match_status === 'MISMATCH'
+                            ? '<span class="badge bg-danger">MISMATCH</span>'
+                            : '<span class="badge bg-warning">PENDING</span>';
+                        
+                        const spcCount = result.spc_live_count !== null ? result.spc_live_count : 'N/A';
+                        const reuploadButton = result.match_status === 'MISMATCH' ? 
+                            `<button class="btn btn-xs btn-outline-warning" onclick="triggerSPCReupload('${result.date}')">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>` : 
+                            '<span class="text-muted">-</span>';
+                        
+                        const newRow = document.createElement('tr');
+                        newRow.innerHTML = `
+                            <td>${result.date}</td>
+                            <td>${result.hailydb_count}</td>
+                            <td>${spcCount}</td>
+                            <td>${statusBadge}</td>
+                            <td>${reuploadButton}</td>
+                        `;
+                        tbody.appendChild(newRow);
                     });
+                    
+                    // Update the timestamp
+                    const timestampElement = container.querySelector('.text-muted');
+                    if (timestampElement) {
+                        timestampElement.textContent = `Last verified: ${new Date().toLocaleTimeString()}`;
+                    }
+                    
+                    console.log(`Added ${newResults.length} new dates to the table`);
+                } else {
+                    alert('No new dates found in the requested range');
                 }
-            });
-            
-            // Combine and sort all results by date descending
-            const allResults = [...existingRows, ...data.results].sort((a, b) => {
-                return new Date(b.date) - new Date(a.date);
-            });
-            
-            allResults.forEach(result => {
-                const statusBadge = result.match_status === 'MATCH' 
-                    ? '<span class="badge bg-success">MATCH</span>'
-                    : result.match_status === 'MISMATCH'
-                    ? '<span class="badge bg-danger">MISMATCH</span>'
-                    : '<span class="badge bg-warning">PENDING</span>';
-                
-                const spcCount = result.spc_live_count !== null ? result.spc_live_count : 'N/A';
-                const reuploadButton = result.match_status === 'MISMATCH' ? 
-                    `<button class="btn btn-xs btn-outline-warning" onclick="triggerSPCReupload('${result.date}')">
-                        <i class="fas fa-sync-alt"></i>
-                    </button>` : 
-                    '<span class="text-muted">-</span>';
-                
-                html += `<tr>
-                    <td>${result.date}</td>
-                    <td>${result.hailydb_count}</td>
-                    <td>${spcCount}</td>
-                    <td>${statusBadge}</td>
-                    <td>${reuploadButton}</td>
-                </tr>`;
-            });
-            
-            html += '</tbody></table></div>';
-            
-            // Add the button and timestamp
-            html += `<div class="text-center mt-2">
-                <button class="btn btn-sm btn-outline-secondary me-2" onclick="loadNextWeek()">
-                    <i class="fas fa-calendar-plus me-1"></i>Load Next Week
-                </button>
-                <small class="text-muted">Last verified: ${new Date().toLocaleTimeString()}</small>
-            </div>`;
-            
-            container.innerHTML = html;
+            }
         } else {
-            // Restore original content on error
-            container.innerHTML = originalContent;
-            alert('Error loading verification data for next week');
+            alert('No verification data found for the next week');
         }
         
     } catch (error) {
         console.error('Error loading next week:', error);
-        alert('Error loading next week data');
+        // Remove loading indicator if it exists
+        const loading = document.getElementById('loading-indicator');
+        if (loading) loading.remove();
+        alert('Error loading next week data: ' + error.message);
     }
 }
 
