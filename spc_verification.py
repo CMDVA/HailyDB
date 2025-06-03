@@ -149,21 +149,29 @@ class SPCVerificationService:
         Deletes existing data for the date first, then re-ingests
         """
         from spc_ingest import SPCIngestService
-        from models import SPCReport
+        from models import SPCReport, SPCIngestionLog
+        
+        # Use a fresh database session to avoid transaction conflicts
+        from app import db
         
         try:
-            # First, delete existing SPC reports for this date
+            # Count existing reports
             existing_count = SPCReport.query.filter(SPCReport.report_date == check_date).count()
-            if existing_count > 0:
-                SPCReport.query.filter(SPCReport.report_date == check_date).delete()
-                # Don't commit yet - wait until after successful re-ingestion
-                logger.info(f"Marked {existing_count} existing SPC reports for deletion on {check_date}")
             
-            # Now re-ingest the data (this will commit the transaction if successful)
-            spc_ingester = SPCIngestService(self.db)
+            # Delete existing reports in a separate transaction
+            if existing_count > 0:
+                deleted_count = SPCReport.query.filter(SPCReport.report_date == check_date).delete()
+                db.session.commit()
+                logger.info(f"Deleted {deleted_count} existing SPC reports for {check_date}")
+            
+            # Also clear any existing ingestion logs for this date to avoid confusion
+            SPCIngestionLog.query.filter(SPCIngestionLog.report_date == check_date).delete()
+            db.session.commit()
+            
+            # Now re-ingest the data with fresh session
+            spc_ingester = SPCIngestService(db.session)
             result = spc_ingester.poll_spc_reports(check_date)
             
-            # If we get here, the ingestion was successful and transaction was committed
             return {
                 'success': True,
                 'date': check_date.strftime('%Y-%m-%d'),
