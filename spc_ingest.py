@@ -80,10 +80,9 @@ class SPCIngestService:
             }
         
         # Create ingestion log
-        log = SPCIngestionLog(
-            report_date=report_date,
-            started_at=datetime.utcnow()
-        )
+        log = SPCIngestionLog()
+        log.report_date = report_date
+        log.started_at = datetime.utcnow()
         self.db.add(log)
         self.db.flush()  # Get the ID
         
