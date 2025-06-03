@@ -427,7 +427,12 @@ async function loadTodaysSPCEvents() {
             html += '</tbody></table></div>';
             
             if (verifyData.last_updated) {
-                html += `<div class="text-center mt-2"><small class="text-muted">Last verified: ${new Date(verifyData.last_updated).toLocaleTimeString()}</small></div>`;
+                html += `<div class="text-center mt-2">
+                    <button class="btn btn-sm btn-outline-secondary me-2" onclick="loadNextWeek()">
+                        <i class="fas fa-calendar-plus me-1"></i>Load Next Week
+                    </button>
+                    <small class="text-muted">Last verified: ${new Date(verifyData.last_updated).toLocaleTimeString()}</small>
+                </div>`;
             }
             
             container.innerHTML = html;
@@ -440,6 +445,119 @@ async function loadTodaysSPCEvents() {
         if (container) {
             container.innerHTML = '<p class="text-danger">Error loading today\'s SPC events.</p>';
         }
+    }
+}
+
+// Load next week of SPC verification data
+async function loadNextWeek() {
+    try {
+        // Find the most recent date in the current table
+        const tableRows = document.querySelectorAll('#todays-spc-events tbody tr');
+        let mostRecentDate = null;
+        
+        tableRows.forEach(row => {
+            const dateCell = row.querySelector('td:first-child');
+            if (dateCell) {
+                const date = new Date(dateCell.textContent);
+                if (!mostRecentDate || date > mostRecentDate) {
+                    mostRecentDate = date;
+                }
+            }
+        });
+        
+        if (!mostRecentDate) {
+            // If no dates found, start from today
+            mostRecentDate = new Date();
+        }
+        
+        // Calculate the next 7 days starting from the day after the most recent
+        const startDate = new Date(mostRecentDate);
+        startDate.setDate(startDate.getDate() + 1);
+        
+        const endDate = new Date(startDate);
+        endDate.setDate(endDate.getDate() + 6);
+        
+        // Format dates for API call
+        const startDateStr = startDate.toISOString().split('T')[0];
+        const endDateStr = endDate.toISOString().split('T')[0];
+        
+        // Show loading state
+        const container = document.getElementById('todays-spc-events');
+        const originalContent = container.innerHTML;
+        container.innerHTML = '<div class="text-center py-3"><i class="fas fa-spinner fa-spin"></i> Loading next week...</div>';
+        
+        // Fetch verification data for the date range
+        const response = await fetch(`/internal/spc-verify?start_date=${startDateStr}&end_date=${endDateStr}&format=json`);
+        const data = await response.json();
+        
+        if (data.status === 'success' && data.results) {
+            // Append new results to existing table
+            let html = '<div class="table-responsive"><table class="table table-sm">';
+            html += '<thead><tr><th>Date</th><th>HailyDB</th><th>SPC Live</th><th>Status</th><th>Action</th></tr></thead>';
+            html += '<tbody>';
+            
+            // Get existing data and combine with new data
+            const existingRows = [];
+            tableRows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                if (cells.length >= 4) {
+                    existingRows.push({
+                        date: cells[0].textContent,
+                        hailydb_count: parseInt(cells[1].textContent) || 0,
+                        spc_live_count: cells[2].textContent === 'N/A' ? null : parseInt(cells[2].textContent),
+                        match_status: cells[3].querySelector('.badge').textContent
+                    });
+                }
+            });
+            
+            // Combine and sort all results by date descending
+            const allResults = [...existingRows, ...data.results].sort((a, b) => {
+                return new Date(b.date) - new Date(a.date);
+            });
+            
+            allResults.forEach(result => {
+                const statusBadge = result.match_status === 'MATCH' 
+                    ? '<span class="badge bg-success">MATCH</span>'
+                    : result.match_status === 'MISMATCH'
+                    ? '<span class="badge bg-danger">MISMATCH</span>'
+                    : '<span class="badge bg-warning">PENDING</span>';
+                
+                const spcCount = result.spc_live_count !== null ? result.spc_live_count : 'N/A';
+                const reuploadButton = result.match_status === 'MISMATCH' ? 
+                    `<button class="btn btn-xs btn-outline-warning" onclick="triggerSPCReupload('${result.date}')">
+                        <i class="fas fa-sync-alt"></i>
+                    </button>` : 
+                    '<span class="text-muted">-</span>';
+                
+                html += `<tr>
+                    <td>${result.date}</td>
+                    <td>${result.hailydb_count}</td>
+                    <td>${spcCount}</td>
+                    <td>${statusBadge}</td>
+                    <td>${reuploadButton}</td>
+                </tr>`;
+            });
+            
+            html += '</tbody></table></div>';
+            
+            // Add the button and timestamp
+            html += `<div class="text-center mt-2">
+                <button class="btn btn-sm btn-outline-secondary me-2" onclick="loadNextWeek()">
+                    <i class="fas fa-calendar-plus me-1"></i>Load Next Week
+                </button>
+                <small class="text-muted">Last verified: ${new Date().toLocaleTimeString()}</small>
+            </div>`;
+            
+            container.innerHTML = html;
+        } else {
+            // Restore original content on error
+            container.innerHTML = originalContent;
+            alert('Error loading verification data for next week');
+        }
+        
+    } catch (error) {
+        console.error('Error loading next week:', error);
+        alert('Error loading next week data');
     }
 }
 
