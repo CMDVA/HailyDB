@@ -111,7 +111,23 @@ async function loadTodaysAlerts() {
                 .slice(0, 6);
             
             sortedTypes.forEach(([type, count]) => {
-                const shortType = type.replace(' Warning', '').replace(' Watch', '').replace(' Advisory', '');
+                let shortType = type;
+                
+                // Specific abbreviations for weather alert types
+                if (type === 'Severe Thunderstorm Warning') shortType = 'Thunderstorm Warning';
+                else if (type === 'Severe Thunderstorm Watch') shortType = 'Thunderstorm Watch';
+                else if (type === 'Flash Flood Warning') shortType = 'Flash Flood';
+                else if (type === 'Flood Warning') shortType = 'Flood';
+                else if (type === 'Flood Advisory') shortType = 'Flood Advisory';
+                else if (type === 'Special Weather Statement') shortType = 'Special Weather';
+                else if (type === 'Small Craft Advisory') shortType = 'Small Craft';
+                else if (type === 'Wind Advisory') shortType = 'Wind Advisory';
+                else if (type === 'Storm Warning') shortType = 'Storm Warning';
+                else if (type.length > 15) {
+                    // Generic shortening for other long types
+                    shortType = type.replace(' Warning', '').replace(' Watch', '').replace(' Advisory', '');
+                }
+                
                 html += `<div class="col-2"><div class="h6 text-primary">${count}</div><small>${shortType}</small></div>`;
             });
             
