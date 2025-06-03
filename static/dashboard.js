@@ -386,12 +386,14 @@ async function loadTodaysSPCEvents() {
         const container = document.getElementById('todays-spc-events');
         if (!container) return;
         
-        // Filter to today's SPC events
-        const todaysEvents = data.reports ? data.reports.filter(report => {
-            return report.report_date === today;
-        }) : [];
+        // Check if table already exists (preserve existing data)
+        const existingTable = container.querySelector('table');
+        if (existingTable) {
+            console.log('SPC verification table already exists - preserving existing data');
+            return;
+        }
         
-        // Get verification data (daily reports)
+        // Get verification data (only for initial load)
         const verifyResponse = await fetch(`/internal/spc-verify-today`);
         const verifyData = await verifyResponse.json();
         
