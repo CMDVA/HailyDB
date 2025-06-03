@@ -152,6 +152,12 @@ class AutonomousScheduler:
             
         except Exception as e:
             logger.error(f"NWS polling failed: {e}")
+            self.last_operation_result = {
+                'operation': 'nws',
+                'success': False,
+                'message': f'NWS polling failed: {str(e)}',
+                'timestamp': datetime.utcnow().isoformat()
+            }
             if log_entry:
                 self.scheduler_service.log_operation_complete(
                     log_entry, False, 0, 0, str(e)
@@ -240,7 +246,8 @@ class AutonomousScheduler:
                 'nws_minutes': self.nws_interval,
                 'spc_minutes': self.spc_interval,
                 'matching_minutes': self.matching_interval
-            }
+            },
+            'last_operation_result': self.last_operation_result
         }
     
     def force_run_all(self):
