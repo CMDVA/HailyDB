@@ -78,7 +78,8 @@ function updateNextPollTime() {
 async function loadTodaysAlerts() {
     try {
         const today = new Date().toISOString().split('T')[0];
-        const response = await fetch(`/alerts?format=json&per_page=500&effective_date=${today}`);
+        const cacheBuster = new Date().getTime();
+        const response = await fetch(`/alerts?format=json&per_page=500&effective_date=${today}&_cb=${cacheBuster}`);
         const data = await response.json();
         
         const tableContainer = document.getElementById('todays-alerts-table');
@@ -95,7 +96,12 @@ async function loadTodaysAlerts() {
                 return acc;
             }, {});
             
-            let html = `<div class="mb-2"><strong>${todaysAlerts.length} alerts ingested today</strong></div>`;
+            // Count only alerts that match our allowed types
+            const filteredAlertsCount = todaysAlerts.filter(alert => 
+                allowedTypes.includes(alert.event || 'Unknown')
+            ).length;
+            
+            let html = `<div class="mb-2"><strong>${filteredAlertsCount} priority alerts today (${todaysAlerts.length} total ingested)</strong></div>`;
             html += '<div class="row text-center mb-2">';
             
             // Show only these specific alert types

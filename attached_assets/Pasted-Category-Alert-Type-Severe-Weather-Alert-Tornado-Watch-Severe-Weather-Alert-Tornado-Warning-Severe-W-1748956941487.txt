@@ -1,0 +1,64 @@
+Category	Alert Type
+Severe Weather Alert	Tornado Watch
+Severe Weather Alert	Tornado Warning
+Severe Weather Alert	Severe Thunderstorm Watch
+Severe Weather Alert	Severe Thunderstorm Warning
+Severe Weather Alert	Severe Weather Statement
+Severe Weather Alert	Extreme Wind Warning
+Severe Weather Alert	Snow Squall Warning
+Winter Weather Alert	Winter Storm Watch
+Winter Weather Alert	Winter Storm Warning
+Winter Weather Alert	Blizzard Warning
+Winter Weather Alert	Ice Storm Warning
+Winter Weather Alert	Winter Weather Advisory
+Winter Weather Alert	Freezing Rain Advisory
+Winter Weather Alert	Wind Chill Advisory
+Winter Weather Alert	Wind Chill Warning
+Winter Weather Alert	Frost Advisory
+Winter Weather Alert	Freeze Warning
+Flood Alert	Flood Watch
+Flood Alert	Flood Warning
+Flood Alert	Flash Flood Watch
+Flood Alert	Flash Flood Warning
+Coastal Alert	Coastal Flood Watch
+Coastal Alert	Coastal Flood Warning
+Coastal Alert	Coastal Flood Advisory
+Coastal Alert	Lakeshore Flood Watch
+Coastal Alert	Lakeshore Flood Warning
+Coastal Alert	Lakeshore Flood Advisory
+Wind & Fog Alert	High Wind Watch
+Wind & Fog Alert	High Wind Warning
+Wind & Fog Alert	Wind Advisory
+Wind & Fog Alert	Dense Fog Advisory
+Wind & Fog Alert	Freezing Fog Advisory
+Fire Weather Alert	Fire Weather Watch
+Fire Weather Alert	Red Flag Warning
+Air Quality & Dust Alert	Air Quality Alert
+Air Quality & Dust Alert	Air Stagnation Advisory
+Air Quality & Dust Alert	Blowing Dust Advisory
+Air Quality & Dust Alert	Dust Storm Warning
+Air Quality & Dust Alert	Ashfall Advisory
+Air Quality & Dust Alert	Ashfall Warning
+Marine Alert	Small Craft Advisory
+Marine Alert	Gale Watch
+Marine Alert	Gale Warning
+Marine Alert	Storm Watch
+Marine Alert	Storm Warning
+Marine Alert	Hurricane Force Wind Warning
+Marine Alert	Special Marine Warning
+Marine Alert	Low Water Advisory
+Tropical Weather Alert	Tropical Storm Watch
+Tropical Weather Alert	Tropical Storm Warning
+Tropical Weather Alert	Hurricane Watch
+Tropical Weather Alert	Hurricane Warning
+Tropical Weather Alert	Storm Surge Watch
+Tropical Weather Alert	Storm Surge Warning
+Tropical Weather Alert	Extreme Wind Warning
+Tsunami Alert	Tsunami Watch
+Tsunami Alert	Tsunami Advisory
+Tsunami Alert	Tsunami Warning
+General Weather Info	Special Weather Statement
+General Weather Info	Hazardous Weather Outlook
+General Weather Info	Short Term Forecast
+General Weather Info	Public Information Statement
+General Weather Info	Administrative Message

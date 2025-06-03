@@ -43,9 +43,29 @@
                         <label for="event" class="form-label">Event Type</label>
                         <select class="form-select" id="event" name="event">
                             <option value="">All Event Types</option>
-                            {% for alert_type in alert_types %}
-                            <option value="{{ alert_type }}" {{ 'selected' if request.args.get('event') == alert_type }}>{{ alert_type }}</option>
-                            {% endfor %}
+                            <option value="Air Quality Alert" {{ 'selected' if request.args.get('event') == 'Air Quality Alert' }}>Air Quality Alert</option>
+                            <option value="Beach Hazards Statement" {{ 'selected' if request.args.get('event') == 'Beach Hazards Statement' }}>Beach Hazards Statement</option>
+                            <option value="Brisk Wind Advisory" {{ 'selected' if request.args.get('event') == 'Brisk Wind Advisory' }}>Brisk Wind Advisory</option>
+                            <option value="Dust Storm Warning" {{ 'selected' if request.args.get('event') == 'Dust Storm Warning' }}>Dust Storm Warning</option>
+                            <option value="Flash Flood Warning" {{ 'selected' if request.args.get('event') == 'Flash Flood Warning' }}>Flash Flood Warning</option>
+                            <option value="Flood Advisory" {{ 'selected' if request.args.get('event') == 'Flood Advisory' }}>Flood Advisory</option>
+                            <option value="Flood Warning" {{ 'selected' if request.args.get('event') == 'Flood Warning' }}>Flood Warning</option>
+                            <option value="Flood Watch" {{ 'selected' if request.args.get('event') == 'Flood Watch' }}>Flood Watch</option>
+                            <option value="Frost Advisory" {{ 'selected' if request.args.get('event') == 'Frost Advisory' }}>Frost Advisory</option>
+                            <option value="Gale Warning" {{ 'selected' if request.args.get('event') == 'Gale Warning' }}>Gale Warning</option>
+                            <option value="Hazardous Seas Warning" {{ 'selected' if request.args.get('event') == 'Hazardous Seas Warning' }}>Hazardous Seas Warning</option>
+                            <option value="Marine Weather Statement" {{ 'selected' if request.args.get('event') == 'Marine Weather Statement' }}>Marine Weather Statement</option>
+                            <option value="Red Flag Warning" {{ 'selected' if request.args.get('event') == 'Red Flag Warning' }}>Red Flag Warning</option>
+                            <option value="Severe Thunderstorm Warning" {{ 'selected' if request.args.get('event') == 'Severe Thunderstorm Warning' }}>Severe Thunderstorm Warning</option>
+                            <option value="Severe Thunderstorm Watch" {{ 'selected' if request.args.get('event') == 'Severe Thunderstorm Watch' }}>Severe Thunderstorm Watch</option>
+                            <option value="Small Craft Advisory" {{ 'selected' if request.args.get('event') == 'Small Craft Advisory' }}>Small Craft Advisory</option>
+                            <option value="Special Weather Statement" {{ 'selected' if request.args.get('event') == 'Special Weather Statement' }}>Special Weather Statement</option>
+                            <option value="Storm Warning" {{ 'selected' if request.args.get('event') == 'Storm Warning' }}>Storm Warning</option>
+                            <option value="Test Message" {{ 'selected' if request.args.get('event') == 'Test Message' }}>Test Message</option>
+                            <option value="Tornado Warning" {{ 'selected' if request.args.get('event') == 'Tornado Warning' }}>Tornado Warning</option>
+                            <option value="Tornado Watch" {{ 'selected' if request.args.get('event') == 'Tornado Watch' }}>Tornado Watch</option>
+                            <option value="Wind Advisory" {{ 'selected' if request.args.get('event') == 'Wind Advisory' }}>Wind Advisory</option>
+                            <option value="Winter Weather Advisory" {{ 'selected' if request.args.get('event') == 'Winter Weather Advisory' }}>Winter Weather Advisory</option>
                         </select>
                     </div>
                     <div class="col-md-3">
