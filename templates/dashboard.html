@@ -1,0 +1,274 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard - NWS Alert Service{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Header -->
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="h3 mb-0">
+                <i class="fas fa-tachometer-alt me-2"></i>
+                Admin Dashboard
+            </h1>
+            <div class="btn-group" role="group">
+                <button type="button" class="btn btn-outline-primary" onclick="triggerIngestion()">
+                    <i class="fas fa-sync-alt me-1"></i>Trigger Ingestion
+                </button>
+                <button type="button" class="btn btn-outline-success" onclick="refreshDashboard()">
+                    <i class="fas fa-refresh me-1"></i>Refresh
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Stats Cards -->
+<div class="row mb-4">
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card stats-card border-left-primary">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                            Total Alerts
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            {{ stats.get('total_alerts', 0) | number_format }}
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card stats-card border-left-success">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                            AI Enriched
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            {{ stats.get('enriched_alerts', 0) | number_format }}
+                        </div>
+                        <div class="text-xs text-muted">
+                            {% if stats.get('total_alerts', 0) > 0 %}
+                                {{ "%.1f"|format((stats.get('enriched_alerts', 0) / stats.get('total_alerts', 1)) * 100) }}% enriched
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-robot fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card stats-card border-left-info">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                            Recent (24h)
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            {{ stats.get('recent_alerts_24h', 0) | number_format }}
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-clock fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card stats-card border-left-warning">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                            Scheduler Status
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold">
+                            {% if stats.get('scheduler_running') %}
+                                <span class="text-success">
+                                    <i class="fas fa-play-circle me-1"></i>Running
+                                </span>
+                            {% else %}
+                                <span class="text-danger">
+                                    <i class="fas fa-pause-circle me-1"></i>Stopped
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-cogs fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div class="row mb-4">
+    <!-- Severity Distribution -->
+    <div class="col-xl-6 col-lg-7">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">Alert Severity Distribution</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="severityChart" width="100%" height="50"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Event Types -->
+    <div class="col-xl-6 col-lg-5">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">Top Event Types</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="eventChart" width="100%" height="50"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- System Status Row -->
+<div class="row mb-4">
+    <div class="col-xl-8">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">System Status</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="text-muted">Ingestion Status</h6>
+                        <p class="mb-1">
+                            <strong>Last Ingestion:</strong> 
+                            <span id="last-ingestion">
+                                {% if stats.get('last_ingestion') %}
+                                    {{ stats.last_ingestion.strftime('%Y-%m-%d %H:%M:%S UTC') if stats.last_ingestion else 'Never' }}
+                                {% else %}
+                                    Never
+                                {% endif %}
+                            </span>
+                        </p>
+                        <p class="mb-1">
+                            <strong>Polling Interval:</strong> 5 minutes
+                        </p>
+                        <p class="mb-3">
+                            <strong>Next Poll:</strong> <span id="next-poll">Calculating...</span>
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-muted">API Health</h6>
+                        <div class="d-flex align-items-center mb-2">
+                            <div class="status-dot bg-success me-2"></div>
+                            <span>NWS API: Operational</span>
+                        </div>
+                        <div class="d-flex align-items-center mb-2">
+                            <div class="status-dot bg-success me-2"></div>
+                            <span>Database: Connected</span>
+                        </div>
+                        <div class="d-flex align-items-center mb-2">
+                            <div class="status-dot bg-{{ 'success' if stats.get('enriched_alerts', 0) > 0 else 'warning' }} me-2"></div>
+                            <span>OpenAI API: {{ 'Available' if stats.get('enriched_alerts', 0) > 0 else 'Check Configuration' }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="col-xl-4">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">System Controls</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <button class="btn btn-primary" onclick="triggerIngestion()">
+                        <i class="fas fa-sync-alt me-1"></i>
+                        Manual Ingestion
+                    </button>
+                    
+                    <button class="btn btn-success" onclick="enrichBatch()">
+                        <i class="fas fa-robot me-1"></i>
+                        Enrich Batch
+                    </button>
+                    
+                    <button class="btn btn-info" onclick="viewMetrics()">
+                        <i class="fas fa-chart-line me-1"></i>
+                        View Metrics
+                    </button>
+                    
+                    <hr>
+                    
+                    <button class="btn btn-outline-warning" onclick="toggleScheduler()">
+                        <i class="fas fa-pause me-1"></i>
+                        <span id="scheduler-toggle">Toggle Scheduler</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Alerts Table -->
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">Recent Alerts</h6>
+                <a href="{{ url_for('get_alerts') }}" class="btn btn-sm btn-outline-primary">
+                    View All <i class="fas fa-arrow-right ms-1"></i>
+                </a>
+            </div>
+            <div class="card-body">
+                <div id="recent-alerts-table">
+                    Loading recent alerts...
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden data for JavaScript -->
+<script type="application/json" id="dashboard-data">
+{
+    "severity_stats": {{ stats.get('severity_stats', {}) | tojson }},
+    "event_stats": {{ stats.get('event_stats', {}) | tojson }},
+    "scheduler_running": {{ stats.get('scheduler_running', false) | tojson }}
+}
+</script>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Initialize dashboard
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeDashboard();
+        loadRecentAlerts();
+        
+        // Update every 30 seconds
+        setInterval(function() {
+            updateDashboardStatus();
+        }, 30000);
+    });
+</script>
+{% endblock %}

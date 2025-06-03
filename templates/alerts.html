@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+
+{% block title %}Weather Alerts - NWS Alert Service{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Header -->
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="h3 mb-0">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                Weather Alerts
+            </h1>
+            <div class="btn-group" role="group">
+                <a href="{{ url_for('get_alerts') }}?format=json" class="btn btn-outline-secondary" target="_blank">
+                    <i class="fas fa-code me-1"></i>JSON API
+                </a>
+                <button type="button" class="btn btn-outline-primary" onclick="refreshAlerts()">
+                    <i class="fas fa-sync-alt me-1"></i>Refresh
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <form method="GET" class="row g-3">
+                    <div class="col-md-3">
+                        <label for="severity" class="form-label">Severity</label>
+                        <select class="form-select" id="severity" name="severity">
+                            <option value="">All Severities</option>
+                            <option value="Extreme" {{ 'selected' if request.args.get('severity') == 'Extreme' }}>Extreme</option>
+                            <option value="Severe" {{ 'selected' if request.args.get('severity') == 'Severe' }}>Severe</option>
+                            <option value="Moderate" {{ 'selected' if request.args.get('severity') == 'Moderate' }}>Moderate</option>
+                            <option value="Minor" {{ 'selected' if request.args.get('severity') == 'Minor' }}>Minor</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="event" class="form-label">Event Type</label>
+                        <input type="text" class="form-control" id="event" name="event" 
+                               value="{{ request.args.get('event', '') }}" placeholder="e.g., Tornado Warning">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="per_page" class="form-label">Per Page</label>
+                        <select class="form-select" id="per_page" name="per_page">
+                            <option value="25" {{ 'selected' if request.args.get('per_page', '50') == '25' }}>25</option>
+                            <option value="50" {{ 'selected' if request.args.get('per_page', '50') == '50' }}>50</option>
+                            <option value="100" {{ 'selected' if request.args.get('per_page', '50') == '100' }}>100</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">&nbsp;</label>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-filter me-1"></i>Filter
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Alerts List -->
+<div class="row">
+    <div class="col-12">
+        {% if alerts.items %}
+            {% for alert in alerts.items %}
+            <div class="card mb-3 alert-card">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="d-flex align-items-start mb-2">
+                                <div class="severity-badge severity-{{ alert.severity.lower() if alert.severity else 'unknown' }} me-3">
+                                    {{ alert.severity or 'N/A' }}
+                                </div>
+                                <div class="flex-grow-1">
+                                    <h5 class="card-title mb-1">
+                                        <a href="{{ url_for('get_alert', alert_id=alert.id) }}" class="text-decoration-none">
+                                            {{ alert.event or 'Unknown Event' }}
+                                        </a>
+                                    </h5>
+                                    <p class="text-muted mb-2">
+                                        <i class="fas fa-map-marker-alt me-1"></i>
+                                        {{ alert.area_desc or 'Area not specified' }}
+                                    </p>
+                                </div>
+                            </div>
+                            
+                            {% if alert.ai_summary %}
+                            <div class="ai-summary mb-2">
+                                <h6 class="text-primary mb-1">
+                                    <i class="fas fa-robot me-1"></i>AI Summary
+                                </h6>
+                                <p class="mb-0">{{ alert.ai_summary }}</p>
+                            </div>
+                            {% endif %}
+                            
+                            {% if alert.ai_tags %}
+                            <div class="alert-tags">
+                                {% for tag in alert.ai_tags %}
+                                    <span class="badge bg-secondary me-1">{{ tag }}</span>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <div class="alert-metadata">
+                                {% if alert.effective %}
+                                <p class="mb-1">
+                                    <small class="text-muted">
+                                        <i class="fas fa-play me-1"></i>
+                                        Effective: {{ alert.effective.strftime('%m/%d %H:%M UTC') }}
+                                    </small>
+                                </p>
+                                {% endif %}
+                                
+                                {% if alert.expires %}
+                                <p class="mb-1">
+                                    <small class="text-muted">
+                                        <i class="fas fa-stop me-1"></i>
+                                        Expires: {{ alert.expires.strftime('%m/%d %H:%M UTC') }}
+                                    </small>
+                                </p>
+                                {% endif %}
+                                
+                                <p class="mb-2">
+                                    <small class="text-muted">
+                                        <i class="fas fa-clock me-1"></i>
+                                        Ingested: {{ alert.ingested_at.strftime('%m/%d %H:%M UTC') if alert.ingested_at }}
+                                    </small>
+                                </p>
+                                
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <a href="{{ url_for('get_alert', alert_id=alert.id) }}" class="btn btn-outline-primary">
+                                        <i class="fas fa-eye me-1"></i>View
+                                    </a>
+                                    {% if not alert.ai_summary %}
+                                    <form method="POST" action="{{ url_for('enrich_alert', alert_id=alert.id) }}" class="d-inline">
+                                        <button type="submit" class="btn btn-outline-success">
+                                            <i class="fas fa-robot me-1"></i>Enrich
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+            
+            <!-- Pagination -->
+            {% if alerts.pages > 1 %}
+            <nav aria-label="Alert pagination">
+                <ul class="pagination justify-content-center">
+                    {% if alerts.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('get_alerts', page=alerts.prev_num, **request.args) }}">
+                            <i class="fas fa-chevron-left"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+                    
+                    {% for page_num in alerts.iter_pages() %}
+                        {% if page_num %}
+                            {% if page_num != alerts.page %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('get_alerts', page=page_num, **request.args) }}">
+                                    {{ page_num }}
+                                </a>
+                            </li>
+                            {% else %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ page_num }}</span>
+                            </li>
+                            {% endif %}
+                        {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">...</span>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if alerts.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('get_alerts', page=alerts.next_num, **request.args) }}">
+                            <i class="fas fa-chevron-right"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            
+            <div class="text-center text-muted">
+                Showing {{ alerts.per_page * (alerts.page - 1) + 1 }} - 
+                {{ alerts.per_page * (alerts.page - 1) + alerts.items|length }} 
+                of {{ alerts.total }} alerts
+            </div>
+            {% endif %}
+            
+        {% else %}
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                    <h4 class="text-muted">No alerts found</h4>
+                    <p class="text-muted">
+                        {% if request.args.get('severity') or request.args.get('event') %}
+                            Try adjusting your filters or <a href="{{ url_for('get_alerts') }}">view all alerts</a>.
+                        {% else %}
+                            No weather alerts have been ingested yet. Check back later or trigger a manual ingestion.
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function refreshAlerts() {
+    window.location.reload();
+}
+</script>
+{% endblock %}
