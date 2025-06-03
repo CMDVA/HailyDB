@@ -124,6 +124,7 @@ class AutonomousScheduler:
             logger.warning("NWS polling already in progress, skipping")
             return
         
+        log_entry = None
         try:
             log_entry = self.scheduler_service.log_operation_start(
                 "nws_poll", "internal_timer"
@@ -140,9 +141,10 @@ class AutonomousScheduler:
             
         except Exception as e:
             logger.error(f"NWS polling failed: {e}")
-            self.scheduler_service.log_operation_complete(
-                log_entry, False, 0, 0, str(e)
-            )
+            if log_entry:
+                self.scheduler_service.log_operation_complete(
+                    log_entry, False, 0, 0, str(e)
+                )
         finally:
             self.nws_lock.release()
     
@@ -152,6 +154,7 @@ class AutonomousScheduler:
             logger.warning("SPC polling already in progress, skipping")
             return
         
+        log_entry = None
         try:
             log_entry = self.scheduler_service.log_operation_start(
                 "spc_poll", "internal_timer"
@@ -175,9 +178,10 @@ class AutonomousScheduler:
             
         except Exception as e:
             logger.error(f"SPC polling failed: {e}")
-            self.scheduler_service.log_operation_complete(
-                log_entry, False, 0, 0, str(e)
-            )
+            if log_entry:
+                self.scheduler_service.log_operation_complete(
+                    log_entry, False, 0, 0, str(e)
+                )
         finally:
             self.spc_lock.release()
     

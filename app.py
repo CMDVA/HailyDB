@@ -50,6 +50,7 @@ from spc_matcher import SPCMatchingService
 from spc_verification import SPCVerificationService
 from scheduler_service import SchedulerService
 from config import Config
+import atexit
 
 # Global services
 ingest_service = None
@@ -58,6 +59,7 @@ spc_ingest_service = None
 spc_matching_service = None
 scheduler_service = None
 scheduler = None
+autonomous_scheduler = None
 
 with app.app_context():
     # Import models to ensure tables are created
