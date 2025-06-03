@@ -102,9 +102,13 @@ function updateStatusIndicator() {
                 
                 if (countdownDiv && countdownTimer) {
                     countdownDiv.style.display = 'block';
-                    const minutes = Math.floor(countdown / 60);
-                    const seconds = countdown % 60;
-                    countdownTimer.textContent = `${minutes}:${seconds.toString().padStart(2, '0')} (${operation})`;
+                    const nextTime = new Date(Date.now() + countdown * 1000);
+                    const timeString = nextTime.toLocaleTimeString('en-US', { 
+                        hour: 'numeric', 
+                        minute: '2-digit',
+                        hour12: true 
+                    });
+                    countdownTimer.textContent = `${timeString} (${operation})`;
                 }
                 
                 // Show progress if operation is imminent (< 30 seconds)
