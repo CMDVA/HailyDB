@@ -506,6 +506,7 @@ function updateNWSSchedulerStatus(status) {
     const nwsPlayBtn = document.getElementById('nws-scheduler-play-btn');
     const nwsPauseBtn = document.getElementById('nws-scheduler-pause-btn');
     const nwsCountdownDiv = document.getElementById('nws-next-ingestion-countdown');
+    const nwsProgressDiv = document.getElementById('nws-ingestion-progress');
     
     if (!nwsStatusElement) return;
     
@@ -524,6 +525,7 @@ function updateNWSSchedulerStatus(status) {
         nwsPlayBtn.style.display = 'inline-block';
         nwsPauseBtn.style.display = 'none';
         nwsCountdownDiv.style.display = 'none';
+        if (nwsProgressDiv) nwsProgressDiv.style.display = 'none';
     }
 }
 
@@ -533,6 +535,7 @@ function updateSPCSchedulerStatus(status) {
     const spcPlayBtn = document.getElementById('spc-scheduler-play-btn');
     const spcPauseBtn = document.getElementById('spc-scheduler-pause-btn');
     const spcCountdownDiv = document.getElementById('spc-next-ingestion-countdown');
+    const spcProgressDiv = document.getElementById('spc-ingestion-progress');
     
     if (!spcStatusElement) return;
     
@@ -542,16 +545,24 @@ function updateSPCSchedulerStatus(status) {
         spcPauseBtn.style.display = 'inline-block';
         spcCountdownDiv.style.display = 'block';
         
-        // Update SPC countdown timer (same as NWS since they run together)
+        // Update SPC countdown timer - show SPC-specific timing
         const spcCountdownTimer = document.getElementById('spc-countdown-timer');
-        if (spcCountdownTimer && status.next_nws_poll) {
-            spcCountdownTimer.textContent = status.next_nws_poll;
+        if (spcCountdownTimer) {
+            if (status.next_spc_poll) {
+                spcCountdownTimer.textContent = status.next_spc_poll;
+            } else if (status.next_nws_poll) {
+                // Fallback to NWS timing since they run together
+                spcCountdownTimer.textContent = status.next_nws_poll;
+            } else {
+                spcCountdownTimer.textContent = '--';
+            }
         }
     } else {
         spcStatusElement.innerHTML = '<i class="fas fa-stop-circle me-1"></i>Stopped';
         spcPlayBtn.style.display = 'inline-block';
         spcPauseBtn.style.display = 'none';
         spcCountdownDiv.style.display = 'none';
+        if (spcProgressDiv) spcProgressDiv.style.display = 'none';
     }
 }
 
