@@ -105,16 +105,18 @@ class SPCIngestService:
                 SPCReport.report_date == report_date
             ).count()
             
-            if result['total_reports'] <= existing_count:
-                logger.info(f"No new reports for {report_date} ({result['total_reports']} <= {existing_count})")
+            logger.info(f"Found {result['total_reports']} reports in CSV, database has {existing_count}")
+            
+            if result['total_reports'] == 0:
+                logger.warning(f"No reports parsed from CSV for {report_date}")
                 log.success = True
                 log.completed_at = datetime.utcnow()
-                log.total_reports = existing_count
+                log.total_reports = 0
                 self.db.commit()
                 return {
-                    'status': 'no_new_data',
+                    'status': 'no_data_in_csv',
                     'existing_count': existing_count,
-                    'message': f'No new reports for {report_date}'
+                    'message': f'No reports found in CSV for {report_date}'
                 }
             
             # Store new reports
