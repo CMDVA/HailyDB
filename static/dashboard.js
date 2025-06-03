@@ -1378,4 +1378,49 @@ function onPauseScheduler() {
     stopAutonomousScheduler();
 }
 
+function showIngestionProgress(message = 'Processing...', percentage = 0) {
+    // Update main progress bar if it exists
+    const progressDiv = document.getElementById('ingestion-progress');
+    const progressText = document.getElementById('progress-text');
+    const progressBar = document.getElementById('progress-bar');
+    
+    if (progressDiv && progressText && progressBar) {
+        progressText.textContent = message;
+        progressBar.style.width = percentage + '%';
+        progressDiv.style.display = 'block';
+    }
+    
+    // Update NWS progress bar
+    const nwsProgressDiv = document.getElementById('nws-ingestion-progress');
+    const nwsProgressText = document.getElementById('nws-progress-text');
+    const nwsProgressBar = document.getElementById('nws-progress-bar');
+    
+    if (nwsProgressDiv && nwsProgressText && nwsProgressBar) {
+        nwsProgressText.textContent = message;
+        nwsProgressBar.style.width = percentage + '%';
+        nwsProgressDiv.style.display = 'block';
+    }
+    
+    // Update SPC progress bar
+    const spcProgressDiv = document.getElementById('spc-ingestion-progress');
+    const spcProgressText = document.getElementById('spc-progress-text');
+    const spcProgressBar = document.getElementById('spc-progress-bar');
+    
+    if (spcProgressDiv && spcProgressText && spcProgressBar) {
+        spcProgressText.textContent = message;
+        spcProgressBar.style.width = percentage + '%';
+        spcProgressDiv.style.display = 'block';
+    }
+}
+
+function hideIngestionProgress() {
+    const progressDiv = document.getElementById('ingestion-progress');
+    const nwsProgressDiv = document.getElementById('nws-ingestion-progress');
+    const spcProgressDiv = document.getElementById('spc-ingestion-progress');
+    
+    if (progressDiv) progressDiv.style.display = 'none';
+    if (nwsProgressDiv) nwsProgressDiv.style.display = 'none';
+    if (spcProgressDiv) spcProgressDiv.style.display = 'none';
+}
+
 console.log('Dashboard JavaScript loaded successfully');
