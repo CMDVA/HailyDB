@@ -1,0 +1,227 @@
+{% extends "base.html" %}
+
+{% block title %}{{ alert.event }} - Alert Detail{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Header -->
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="h3 mb-0">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                Alert Details
+            </h1>
+            <div class="btn-group" role="group">
+                <a href="{{ url_for('get_alerts') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-1"></i>Back to Alerts
+                </a>
+                <a href="{{ url_for('get_alert', alert_id=alert.id) }}?format=json" class="btn btn-outline-primary" target="_blank">
+                    <i class="fas fa-code me-1"></i>JSON
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Alert Card -->
+<div class="row">
+    <div class="col-12">
+        <div class="card alert-card mb-4">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-8">
+                        <!-- Alert Header -->
+                        <div class="d-flex align-items-start mb-3">
+                            <div class="severity-badge severity-{{ alert.severity.lower() if alert.severity else 'unknown' }} me-3">
+                                {{ alert.severity or 'N/A' }}
+                            </div>
+                            <div class="flex-grow-1">
+                                <h2 class="card-title mb-2">{{ alert.event or 'Unknown Event' }}</h2>
+                                <p class="text-muted mb-0">
+                                    <i class="fas fa-map-marker-alt me-1"></i>
+                                    {{ alert.area_desc or 'Area not specified' }}
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- AI Summary -->
+                        {% if alert.ai_summary %}
+                        <div class="ai-summary mb-4">
+                            <h5 class="text-primary mb-2">
+                                <i class="fas fa-robot me-1"></i>AI Summary
+                            </h5>
+                            <p class="mb-0">{{ alert.ai_summary }}</p>
+                        </div>
+                        {% endif %}
+
+                        <!-- AI Tags -->
+                        {% if alert.ai_tags %}
+                        <div class="alert-tags mb-4">
+                            <h6 class="text-muted mb-2">Tags</h6>
+                            {% for tag in alert.ai_tags %}
+                                <span class="badge bg-secondary me-1 mb-1">{{ tag }}</span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+
+                        <!-- Original Description -->
+                        {% if alert.properties and alert.properties.get('description') %}
+                        <div class="original-description">
+                            <h5 class="text-muted mb-2">Official Description</h5>
+                            <div class="alert alert-light">
+                                <pre class="mb-0" style="white-space: pre-wrap; font-family: inherit;">{{ alert.properties.description }}</pre>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Instructions -->
+                        {% if alert.properties and alert.properties.get('instruction') %}
+                        <div class="instructions mt-4">
+                            <h5 class="text-warning mb-2">
+                                <i class="fas fa-exclamation-circle me-1"></i>Instructions
+                            </h5>
+                            <div class="alert alert-warning">
+                                <pre class="mb-0" style="white-space: pre-wrap; font-family: inherit;">{{ alert.properties.instruction }}</pre>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Metadata Sidebar -->
+                    <div class="col-md-4">
+                        <div class="alert-metadata">
+                            <h5 class="text-muted mb-3">Alert Information</h5>
+                            
+                            <!-- Timing -->
+                            <div class="mb-3">
+                                <h6 class="text-muted">Timing</h6>
+                                {% if alert.effective %}
+                                <p class="mb-1">
+                                    <small>
+                                        <i class="fas fa-play me-1 text-success"></i>
+                                        <strong>Effective:</strong> {{ alert.effective.strftime('%B %d, %Y at %I:%M %p UTC') }}
+                                    </small>
+                                </p>
+                                {% endif %}
+                                
+                                {% if alert.expires %}
+                                <p class="mb-1">
+                                    <small>
+                                        <i class="fas fa-stop me-1 text-danger"></i>
+                                        <strong>Expires:</strong> {{ alert.expires.strftime('%B %d, %Y at %I:%M %p UTC') }}
+                                    </small>
+                                </p>
+                                {% endif %}
+                                
+                                {% if alert.sent %}
+                                <p class="mb-1">
+                                    <small>
+                                        <i class="fas fa-paper-plane me-1 text-info"></i>
+                                        <strong>Sent:</strong> {{ alert.sent.strftime('%B %d, %Y at %I:%M %p UTC') }}
+                                    </small>
+                                </p>
+                                {% endif %}
+
+                                {% if alert.duration_minutes %}
+                                <p class="mb-1">
+                                    <small>
+                                        <i class="fas fa-clock me-1 text-muted"></i>
+                                        <strong>Duration:</strong> {{ alert.duration_minutes }} minutes
+                                    </small>
+                                </p>
+                                {% endif %}
+                            </div>
+
+                            <!-- Status -->
+                            <div class="mb-3">
+                                <h6 class="text-muted">Status</h6>
+                                <p class="mb-1">
+                                    <small>
+                                        <i class="fas fa-{{ 'check-circle text-success' if alert.is_active else 'times-circle text-muted' }} me-1"></i>
+                                        <strong>Active:</strong> {{ 'Yes' if alert.is_active else 'No' }}
+                                    </small>
+                                </p>
+                                <p class="mb-1">
+                                    <small>
+                                        <i class="fas fa-{{ 'robot text-success' if alert.ai_summary else 'robot text-muted' }} me-1"></i>
+                                        <strong>AI Enriched:</strong> {{ 'Yes' if alert.ai_summary else 'No' }}
+                                    </small>
+                                </p>
+                            </div>
+
+                            <!-- System Info -->
+                            <div class="mb-3">
+                                <h6 class="text-muted">System Info</h6>
+                                <p class="mb-1">
+                                    <small>
+                                        <i class="fas fa-download me-1 text-info"></i>
+                                        <strong>Ingested:</strong> {{ alert.ingested_at.strftime('%B %d, %Y at %I:%M %p UTC') if alert.ingested_at }}
+                                    </small>
+                                </p>
+                                <p class="mb-1">
+                                    <small>
+                                        <i class="fas fa-fingerprint me-1 text-muted"></i>
+                                        <strong>Alert ID:</strong> 
+                                        <code class="small">{{ alert.id[-12:] if alert.id else 'N/A' }}...</code>
+                                    </small>
+                                </p>
+                            </div>
+
+                            <!-- Actions -->
+                            <div class="d-grid gap-2">
+                                {% if not alert.ai_summary %}
+                                <form method="POST" action="{{ url_for('enrich_alert', alert_id=alert.id) }}">
+                                    <button type="submit" class="btn btn-success w-100">
+                                        <i class="fas fa-robot me-1"></i>Enrich with AI
+                                    </button>
+                                </form>
+                                {% else %}
+                                <form method="POST" action="{{ url_for('enrich_alert', alert_id=alert.id) }}">
+                                    <button type="submit" class="btn btn-outline-success w-100">
+                                        <i class="fas fa-sync-alt me-1"></i>Re-enrich
+                                    </button>
+                                </form>
+                                {% endif %}
+                                
+                                <a href="{{ url_for('get_alert', alert_id=alert.id) }}?format=json" class="btn btn-outline-primary w-100" target="_blank">
+                                    <i class="fas fa-code me-1"></i>View Raw JSON
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Geometry Information -->
+{% if alert.geometry %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-map me-1"></i>Geographic Coverage
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-2">Alert Coverage Area (GeoJSON)</p>
+                <pre class="bg-light p-3 rounded"><code>{{ alert.geometry | tojson(indent=2) }}</code></pre>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Auto-refresh if alert is still active
+{% if alert.is_active %}
+setTimeout(function() {
+    window.location.reload();
+}, 300000); // Refresh every 5 minutes for active alerts
+{% endif %}
+</script>
+{% endblock %}
