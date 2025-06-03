@@ -231,4 +231,115 @@ function updateLastUpdateTime() {
     }
 }
 
+// Load integrity verification data
+async function loadIntegrityVerification() {
+    const container = document.getElementById('integrity-verification-container');
+    if (!container) return;
+    
+    // Show loading state
+    container.innerHTML = `
+        <div class="text-center py-3">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="text-muted small mt-2">Verifying data integrity...</p>
+        </div>
+    `;
+    
+    try {
+        const response = await fetch('/internal/spc-verify?format=json&days=7');
+        const data = await response.json();
+        
+        if (response.ok && data.results) {
+            displayIntegrityResults(data.results, data.summary);
+        } else {
+            container.innerHTML = `
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Unable to verify data integrity. Please try again.
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Error loading integrity verification:', error);
+        container.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="fas fa-times me-2"></i>
+                Error loading verification data.
+            </div>
+        `;
+    }
+}
+
+// Display integrity verification results
+function displayIntegrityResults(results, summary) {
+    const container = document.getElementById('integrity-verification-container');
+    
+    let html = `
+        <div class="row mb-3">
+            <div class="col-md-3">
+                <small class="text-muted">Total Checked</small>
+                <div class="h6 mb-0">${summary.total_dates} days</div>
+            </div>
+            <div class="col-md-3">
+                <small class="text-success">Matches</small>
+                <div class="h6 mb-0 text-success">${summary.matches}</div>
+            </div>
+            <div class="col-md-3">
+                <small class="text-danger">Mismatches</small>
+                <div class="h6 mb-0 text-danger">${summary.mismatches}</div>
+            </div>
+            <div class="col-md-3">
+                <small class="text-muted">Match Rate</small>
+                <div class="h6 mb-0">${summary.match_percentage.toFixed(1)}%</div>
+            </div>
+        </div>
+        
+        <div class="table-responsive">
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>HailyDB</th>
+                        <th>SPC Live</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+    
+    results.forEach(result => {
+        const statusBadge = result.match_status === 'MATCH' 
+            ? '<span class="badge bg-success">MATCH</span>'
+            : result.match_status === 'MISMATCH'
+            ? '<span class="badge bg-danger">MISMATCH</span>'
+            : '<span class="badge bg-warning">N/A</span>';
+            
+        const spcCount = result.spc_live_count !== null ? result.spc_live_count : 'N/A';
+        
+        html += `
+            <tr>
+                <td>${result.date}</td>
+                <td><span class="badge bg-primary">${result.hailydb_count}</span></td>
+                <td><span class="badge bg-secondary">${spcCount}</span></td>
+                <td>${statusBadge}</td>
+            </tr>
+        `;
+    });
+    
+    html += `
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="text-center mt-3">
+            <a href="/internal/spc-verify" class="btn btn-sm btn-outline-primary">
+                <i class="fas fa-external-link-alt me-1"></i>View Full Report
+            </a>
+        </div>
+    `;
+    
+    container.innerHTML = html;
+}
+
 console.log('Dashboard JavaScript loaded successfully');
