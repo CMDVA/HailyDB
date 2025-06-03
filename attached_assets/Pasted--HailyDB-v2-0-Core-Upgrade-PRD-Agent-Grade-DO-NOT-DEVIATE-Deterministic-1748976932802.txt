@@ -1,0 +1,209 @@
+=====================
+
+HailyDB v2.0 | Core Upgrade PRD (Agent-Grade)
+
+DO NOT DEVIATE — Deterministic Execution Required
+
+=====================
+
+---------------------------------
+
+❶ FILESYSTEM STRUCTURE (OVERRIDE REQUIRED)
+
+---------------------------------
+
+Replace existing structure with the following. All filenames must match exactly:
+
+/
+├── app.py                  # Flask app factory
+├── main.py                 # Entrypoint and scheduler attach
+├── ingest.py               # NWS alert polling logic
+├── spc_ingest.py           # SPC CSV polling and fetch logic
+├── spc_matcher.py          # SPC ↔ NWS match logic engine
+├── spc_verification.py     # Scheduling for rolling historical backfill
+├── enrich.py               # AI summaries + tag classification (OpenAI)
+├── models.py               # PostgreSQL SQLAlchemy schema
+├── config.py               # Central config module
+├── templates/              # HTML templates (admin dashboard)
+├── static/                 # CSS and JS assets
+├── pyproject.toml          # Dependencies
+└── README.md               # Setup & deployment instructions
+
+---------------------------------
+
+❷ CRON STRATEGY FOR AUTONOMOUS INGESTION
+
+---------------------------------
+
+Schedule defined via APScheduler. Must be mounted in main.py:
+
+→ NWS: Every 5 minutes
+
+→ SPC: Every 5 minutes (T)
+
+→ SPC: Every 3 hours (T-1 to T-3)
+
+→ SPC: Daily for (T-4 to T-30), max 3 per hour
+
+Functions:
+
+- poll_nws_alerts() in ingest.py
+
+- poll_spc_for_date(date) in spc_ingest.py
+
+- schedule_spc_backfill() in spc_verification.py
+
+---------------------------------
+
+❸ SPC MATCHING RULES
+
+---------------------------------
+
+Found in spc_matcher.py. Use exact match logic:
+
+
+
+- TIME: ±2 hours from alert.effective
+
+- GEO:
+
+- Primary: County FIPS match (confidence: 0.9)
+
+- Fallback: Radius < 25 miles (confidence: 0.7)
+
+
+
+Match types:
+
+- Tornado → Tornado Warning / Watch
+
+- Wind → Severe Thunderstorm / Statement / Advisory
+
+- Hail → Severe Thunderstorm / Statement / Advisory
+
+Store SPC report details in:
+
+- spc_verified: bool
+
+- spc_reports: JSONB
+
+- spc_confidence_score: float
+
+- spc_match_method: str
+
+- spc_report_count: int
+
+---------------------------------
+
+❹ DATABASE MODEL
+
+---------------------------------
+
+File: models.py
+
+Must include full NWS alert payload + enrichments. Must include:
+
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import Column, String, Text, DateTime, Float, Boolean
+from app.db import Base
+
+class Alert(Base):
+tablename = "alerts"
+
+id = Column(String, primary_key=True)
+event = Column(String)
+severity = Column(String)
+area_desc = Column(Text)
+effective = Column(DateTime)
+expires = Column(DateTime)
+sent = Column(DateTime)
+geometry = Column(JSONB)
+properties = Column(JSONB)
+raw = Column(JSONB)
+ai_summary = Column(Text)
+ai_tags = Column(JSONB)
+spc_verified = Column(Boolean, default=False)
+spc_reports = Column(JSONB)
+spc_confidence_score = Column(Float)
+spc_match_method = Column(String)
+spc_report_count = Column(Float)
+
+---------------------------------
+
+❺ ADMIN DASHBOARD (OPTIONAL)
+
+---------------------------------
+
+Path: /admin/dashboard
+
+Metrics to display:
+
+- Total alert count
+
+- Verified vs non-verified alerts
+
+- Last SPC match timestamp
+
+- Queue lag (T-1, T-7, T-30 timestamps)
+
+- Cron execution times
+
+---------------------------------
+
+❻ RECOVERY & ERROR STRATEGY
+
+---------------------------------
+
+- All ingestion failures logged in DB
+
+- Graceful degradation on network or API outage
+
+- SPCIngestionLog must exist and append every run
+
+- Timestamp every success and failure
+
+---------------------------------
+
+❼ DEPENDENCIES (pyproject.toml)
+
+---------------------------------
+
+
+
+[tool.poetry.dependencies]
+
+flask = "^3.1"
+
+sqlalchemy = "^2.0"
+
+psycopg2-binary = "^2.9"
+
+apscheduler = "^3.11"
+
+openai = "^1.0"
+
+geopy = "^2.4"
+
+shapely = "^2.0"
+
+---------------------------------
+
+❽ NEXT STEPS
+
+---------------------------------
+
+1. Implement new scheduler in main.py
+
+2. Connect all cron services
+
+3. Log every cron execution
+
+4. Build status endpoint /internal/status
+
+5. Confirm full queue cycle works on deploy
+
+6. Validate schema vs API output with runtime test
+
+
+
+DO NOT SKIP ANY STEPS. FAILURE TO LOG = FAILURE TO COMPLETE TASK.

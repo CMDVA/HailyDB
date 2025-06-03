@@ -40,15 +40,16 @@ class Alert(db.Model):
     ingested_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
     
-    # Database indexes for location-based queries
+    # Database indexes for location-based queries and performance
     __table_args__ = (
         Index('idx_alert_area_desc', 'area_desc'),
         Index('idx_alert_severity', 'severity'),
         Index('idx_alert_event', 'event'),
         Index('idx_alert_effective', 'effective'),
         Index('idx_alert_expires', 'expires'),
-        Index('idx_alert_ingested_at', 'ingested_at'),
+        Index('idx_alert_ingested_at_desc', 'ingested_at'),  # Optimized for recent queries
         Index('idx_alert_active', 'effective', 'expires'),
+        Index('idx_alert_spc_verified', 'spc_verified'),  # For verification tracking
     )
 
     def __repr__(self):

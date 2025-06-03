@@ -1,0 +1,172 @@
+HailyDB Ingestion & Stability Core Upgrade
+Phase: Stabilization + Autonomy
+Focus: Ingestion Hardening, SPC Verification Scheduling, Monitoring & Recovery
+Codebase: https://github.com/CMDVA/HailyDB
+Environment: Replit
+
+✅ GOALS
+Self-sustaining ingestion system (no manual restart or correction)
+
+Rolling SPC report verification with matched alert enrichment
+
+Internal visibility + diagnostics (admin dashboard)
+
+Agent-resilient architecture (deterministic execution per cron tick)
+
+🧱 SYSTEM ARCHITECTURE
+Directory (Post Upgrade - Keep Flat)
+csharp
+Copy
+Edit
+/
+├── app.py                  # Flask factory
+├── main.py                 # Entry & scheduler attach
+├── ingest.py               # NWS ingestion (active alerts)
+├── spc_ingest.py           # SPC CSV fetching (rolling queue)
+├── spc_matcher.py          # SPC ↔ NWS match logic
+├── spc_verification.py     # Backfill + queue strategy
+├── enrich.py               # OpenAI summarization/tagging
+├── models.py               # SQLAlchemy schema
+├── config.py               # ENV + runtime controls
+├── templates/              # Admin dashboard
+├── static/                 # CSS/JS
+├── pyproject.toml          # All dependencies
+└── README.md               # Deployment & agent instructions
+🔁 INGESTION STRATEGY
+NWS (Active Alerts)
+Every 5 minutes
+
+Function: poll_nws_alerts()
+
+Insert or update alerts in DB
+
+Retry on 429/500 with backoff + jitter
+
+SPC (Historical Verification Queue)
+Poll https://www.spc.noaa.gov/climo/reports/YYYYMMDD_rpts.csv
+
+Queue Strategy:
+
+Age of Report	Polling Rule	Max Per Hour
+Today (T)	Every 5 min	∞
+T-1 to T-3	Every 3 hrs	∞
+T-4 to T-30	Once per day	3 dates/hr
+
+Function: schedule_spc_backfill()
+
+Backfill log table: SPCIngestionLog
+
+Smart throttling to avoid over-polling
+
+🔍 SPC MATCHING RULES
+From spc_matcher.py:
+
+Time window: ±2 hours from alert effective
+
+Geo strategy:
+
+First: county FIPS match (score: 0.9)
+
+Fallback: 25-mile radius from alert centroid (score: 0.7)
+
+Match event → alert:
+
+Tornado → Tornado Warning/Watch
+
+Wind → Severe T-storm/Statement/Advisory
+
+Hail → Severe T-storm/Statement/Advisory
+
+Multi-match behavior: Append all matches; store report count
+
+🧠 DATABASE (models.py)
+No changes required.
+
+Current fields supported:
+
+python
+Copy
+Edit
+spc_verified: bool
+spc_reports: JSONB
+spc_confidence_score: float
+spc_match_method: str
+spc_report_count: int
+Add index on ingested_at DESC for improved recent polling.
+
+🧪 ADMIN DASHBOARD
+Path: /admin/dashboard
+
+New Metrics:
+Total alerts (by severity/type)
+
+Active alerts (live)
+
+Verified alerts (spc_verified = true)
+
+SPC match coverage ratio (verified / total)
+
+Queue backlog: dates not yet verified
+
+Failure logs from SPCIngestionLog
+
+⚙️ SYSTEM DIAGNOSTICS
+Component	Monitoring	Retry	Escalation
+NWS API	200/429/500	✅	Logs error with timestamp
+SPC Fetching	CSV status	✅	Logs in SPCIngestionLog
+AI Enrichment	OpenAI	✅	Logs & disables on 3x fail
+DB Health	Connection	✅	Retry on SQLAlchemy error
+
+🚀 NEXT STEPS FOR IMPLEMENTATION
+PHASE 1 – SYSTEM HARDENING
+ Add fallback log table if SPCIngestionLog not created
+
+ Catch & log every failed SPC match (don’t skip silently)
+
+ Add test function to validate a given date's ingestion status
+
+ Enable hardcoded list of past 30 dates to re-verify if corruption detected
+
+PHASE 2 – AUTONOMOUS CRON INFRASTRUCTURE
+ Use APScheduler + daemon mode
+
+ Mount scheduler with predictable interval + date list
+
+ Recheck logs before fetching (prevent double-pulls)
+
+ Log all task start/completion timestamps in unified audit
+
+PHASE 3 – ADMIN + SELF-RECOVERY
+ Create /internal/status with:
+
+Timestamp of last job runs (NWS, SPC)
+
+Number of active alerts
+
+Oldest alert missing spc_verified
+
+ Visual frontend on /admin/dashboard with metrics
+
+⛔ WHAT NOT TO BUILD (YET)
+Webhooks / WebSocket /stream API
+
+Multi-region stateful queues
+
+Alert forwarding automation (future)
+
+📦 DEPENDENCIES
+Update pyproject.toml:
+
+toml
+Copy
+Edit
+[tool.poetry.dependencies]
+flask = "^3.1"
+sqlalchemy = "^2.0"
+psycopg2-binary = "^2.9"
+openai = "^1.0"
+apscheduler = "^3.11"
+geopy = "^2.4"        # For radius checks
+shapely = "^2.0"      # For geo boundaries
+✅ SUMMARY
+This document defines exactly what HailyDB needs to become a reliable, zero-maintenance data API powering HailyAI. The above structure guarantees deterministic cron execution, SPC backfilling with verifiable logs, and production-safe ingestion pipelines.

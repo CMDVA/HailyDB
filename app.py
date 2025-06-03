@@ -433,34 +433,85 @@ def view_spc_reports():
 # Internal/Admin Routes
 @app.route('/internal/status')
 def internal_status():
-    """Health status endpoint"""
+    """Health status endpoint - comprehensive system diagnostics"""
     try:
-        # Get basic stats
+        # Basic alert metrics
         total_alerts = Alert.query.count()
         recent_alerts = Alert.query.filter(
             Alert.ingested_at >= datetime.utcnow() - timedelta(hours=24)
         ).count()
+        active_alerts = Alert.query.filter(
+            Alert.effective <= datetime.utcnow(),
+            Alert.expires > datetime.utcnow()
+        ).count()
         
-        # Get last ingestion time
+        # SPC verification metrics
+        verified_alerts = Alert.query.filter(Alert.spc_verified == True).count()
+        unverified_alerts = Alert.query.filter(Alert.spc_verified == False).count()
+        verification_coverage = (verified_alerts / total_alerts * 100) if total_alerts > 0 else 0
+        
+        # Last ingestion timestamps
         last_alert = Alert.query.order_by(Alert.ingested_at.desc()).first()
-        last_ingestion = last_alert.ingested_at.isoformat() if last_alert else None
+        last_nws_ingestion = last_alert.ingested_at.isoformat() if last_alert else None
         
-        # Check scheduler status
-        scheduler_running = scheduler.running if scheduler else False
+        # SPC ingestion status
+        last_spc_log = SPCIngestionLog.query.order_by(SPCIngestionLog.started_at.desc()).first()
+        last_spc_ingestion = last_spc_log.started_at.isoformat() if last_spc_log else None
         
-        status = {
-            'status': 'healthy',
-            'total_alerts': total_alerts,
-            'recent_alerts_24h': recent_alerts,
-            'last_ingestion': last_ingestion,
-            'scheduler_running': scheduler_running,
-            'timestamp': datetime.utcnow().isoformat()
-        }
+        # Oldest unverified alert (backlog indicator)
+        oldest_unverified = Alert.query.filter(
+            Alert.spc_verified == False
+        ).order_by(Alert.effective.asc()).first()
+        oldest_unverified_date = oldest_unverified.effective.isoformat() if oldest_unverified else None
         
-        return jsonify(status)
+        # Recent ingestion logs (error detection)
+        recent_logs = SPCIngestionLog.query.filter(
+            SPCIngestionLog.started_at >= datetime.utcnow() - timedelta(hours=24)
+        ).order_by(SPCIngestionLog.started_at.desc()).limit(10).all()
+        
+        failed_jobs = [log for log in recent_logs if not log.success]
+        
+        # Database health check
+        try:
+            db.session.execute(db.text('SELECT 1'))
+            db_status = "healthy"
+        except Exception as e:
+            db_status = f"error: {str(e)}"
+        
+        return jsonify({
+            'status': 'healthy' if len(failed_jobs) == 0 and db_status == "healthy" else 'warning',
+            'timestamp': datetime.utcnow().isoformat(),
+            'database': db_status,
+            'alerts': {
+                'total': total_alerts,
+                'recent_24h': recent_alerts,
+                'active_now': active_alerts
+            },
+            'spc_verification': {
+                'verified_count': verified_alerts,
+                'unverified_count': unverified_alerts,
+                'coverage_percentage': round(verification_coverage, 2),
+                'oldest_unverified': oldest_unverified_date
+            },
+            'ingestion': {
+                'last_nws_ingestion': last_nws_ingestion,
+                'last_spc_ingestion': last_spc_ingestion,
+                'failed_jobs_24h': len(failed_jobs)
+            },
+            'system': {
+                'environment': 'replit',
+                'python_version': '3.11',
+                'framework': 'flask+sqlalchemy'
+            }
+        })
+        
     except Exception as e:
-        logger.error(f"Error getting status: {e}")
-        return jsonify({'status': 'error', 'message': str(e)}), 500
+        logger.error(f"Error in status endpoint: {e}")
+        return jsonify({
+            'status': 'error',
+            'timestamp': datetime.utcnow().isoformat(),
+            'error': str(e)
+        }), 500
 
 @app.route('/internal/dashboard')
 def internal_dashboard():

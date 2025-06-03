@@ -1,0 +1,84 @@
+FILESYSTEM STRUCTURE
+Confirm or override the following directory and filename assumptions:
+
+graphql
+Copy
+Edit
+/
+├── app/
+│   ├── main.py
+│   ├── ingest.py              # NWS API fetch & store
+│   ├── spc.py                 # NEW: SPC fetch & matching
+│   ├── db.py                  # SQLAlchemy setup
+│   ├── models.py              # PostgreSQL schema
+│   ├── enrich.py              # OpenAI summaries/tags
+│   └── config.py              # Polling URLs, cron flags
+├── scripts/
+│   └── backfill.py            # Retroactive loading
+├── admin/
+│   ├── dashboard.py           # System status
+│   └── metrics.py             # Record metrics & validation
+├── data/                      # Local SPC CSV storage
+│   └── YYYYMMDD.csv
+├── requirements.txt
+└── replit.nix
+Do you confirm this structure?
+
+❷ CRON STRATEGY FOR AUTONOMOUS INGESTION
+Confirm these timing rules:
+
+Source	Target Range	Frequency	Constraint
+NWS	Current day (T)	Every 5 minutes	0/5 * * * *
+SPC	T - 1 day	Every 3 hours	0 */3 * * *
+SPC	T - 2 days	Every 12 hours	0 */12 * * *
+SPC	T - 3 to T - 30 days	Once daily	max 3 dates/hour rotation enforced
+
+Can you confirm or correct these cron assumptions?
+
+❸ SPC REPORT MATCHING RULES
+Please confirm all of the following match constraints for associating SPC reports to NWS alerts:
+
+Time Window Tolerance: ± how many minutes/hours?
+
+Geographic Tolerance:
+
+Option A: same county?
+
+Option B: within X miles from lat/lon centroid?
+
+Alert → Report Type Map:
+Example:
+
+Severe Thunderstorm Warning → ["HAIL", "WIND"]
+
+Tornado Warning → ["TORNADO"]
+
+Confirm all necessary mappings
+
+❹ DOWNSTREAM PUSH REQUIREMENTS
+You're considering /stream/alerts as a WebSocket or webhook feature. Confirm:
+
+Should the Agent build only the alert publishing endpoint, or also include:
+
+Full WebSocket infrastructure?
+
+JSON schema for outgoing messages?
+
+Filtering logic (e.g., by state or tag)?
+
+Subscription management?
+
+❺ DATABASE FIELD CONFIRMATION
+These fields will be added to the alerts table for SPC verification. Confirm or modify:
+
+python
+Copy
+Edit
+spc_verified = Column(Boolean)       # Has a verified SPC match
+spc_reports = Column(JSONB)          # Full matched reports
+❻ FALLBACK + ERROR RECOVERY
+When SPC site is unreachable or CSV format breaks:
+
+Should ingestion retry? skip? delay next scheduled task?
+
+Where should these errors be logged — flat file, console, DB log table?
