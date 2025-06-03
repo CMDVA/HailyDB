@@ -117,27 +117,19 @@
     </div>
 
     <div class="col-xl-3 col-md-6 mb-4">
-        <div class="card stats-card border-left-warning">
+        <div class="card stats-card border-left-info">
             <div class="card-body">
                 <div class="row no-gutters align-items-center">
                     <div class="col mr-2">
-                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                            Scheduler Status
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                            System Status
                         </div>
-                        <div class="h5 mb-0 font-weight-bold">
-                            {% if stats.get('scheduler_running') %}
-                                <span class="text-success">
-                                    <i class="fas fa-play-circle me-1"></i>Running
-                                </span>
-                            {% else %}
-                                <span class="text-danger">
-                                    <i class="fas fa-pause-circle me-1"></i>Stopped
-                                </span>
-                            {% endif %}
+                        <div class="h5 mb-0 font-weight-bold text-success">
+                            <i class="fas fa-check-circle me-1"></i>Ready
                         </div>
                     </div>
                     <div class="col-auto">
-                        <i class="fas fa-cogs fa-2x text-gray-300"></i>
+                        <i class="fas fa-server fa-2x text-gray-300"></i>
                     </div>
                 </div>
             </div>
@@ -239,26 +231,27 @@
             </div>
             <div class="card-body">
                 <div class="d-grid gap-2">
-                    <button class="btn btn-primary" onclick="triggerIngestion()">
-                        <i class="fas fa-sync-alt me-1"></i>
-                        Manual Ingestion
+                    <button class="btn btn-primary btn-lg" onclick="runFullUpdate()" id="run-button">
+                        <i class="fas fa-play me-1"></i>
+                        Run Full Update
                     </button>
-                    
-                    <button class="btn btn-success" onclick="enrichBatch()">
-                        <i class="fas fa-robot me-1"></i>
-                        Enrich Batch
-                    </button>
-                    
-                    <button class="btn btn-info" onclick="viewMetrics()">
-                        <i class="fas fa-chart-line me-1"></i>
-                        View Metrics
-                    </button>
+                    <small class="text-muted text-center">Polls NWS alerts, ingests SPC data, and runs matching</small>
                     
                     <hr>
                     
-                    <button class="btn btn-outline-warning" onclick="toggleScheduler()">
-                        <i class="fas fa-pause me-1"></i>
-                        <span id="scheduler-toggle">Toggle Scheduler</span>
+                    <button class="btn btn-outline-primary" onclick="triggerIngestion()">
+                        <i class="fas fa-sync-alt me-1"></i>
+                        NWS Alerts Only
+                    </button>
+                    
+                    <button class="btn btn-outline-success" onclick="enrichBatch()">
+                        <i class="fas fa-robot me-1"></i>
+                        AI Enrichment
+                    </button>
+                    
+                    <button class="btn btn-outline-info" onclick="viewMetrics()">
+                        <i class="fas fa-chart-line me-1"></i>
+                        View Metrics
                     </button>
                 </div>
             </div>

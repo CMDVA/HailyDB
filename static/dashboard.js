@@ -407,7 +407,7 @@ async function loadSPCVerificationTable() {
                     ? '<span class="badge bg-success">MATCH</span>'
                     : result.match_status === 'MISMATCH'
                     ? '<span class="badge bg-danger">MISMATCH</span>'
-                    : '<span class="badge bg-warning">PENDING</span>';
+                    : '<span class="badge bg-warning" title="SPC data not yet processed for this date">PENDING</span>';
                     
                 const spcCount = result.spc_live_count !== null ? result.spc_live_count : 'N/A';
                 
@@ -427,6 +427,12 @@ async function loadSPCVerificationTable() {
             });
             
             html += '</tbody></table></div>';
+            html += '<div class="mt-2 small text-muted">';
+            html += '<strong>Status Legend:</strong> ';
+            html += '<span class="badge bg-success me-1">MATCH</span>Data matches between sources, ';
+            html += '<span class="badge bg-danger me-1">MISMATCH</span>Data differs between sources, ';
+            html += '<span class="badge bg-warning me-1">PENDING</span>SPC data not yet processed for this date';
+            html += '</div>';
             
             if (verifyData.last_updated) {
                 html += `<div class="text-center mt-2">
@@ -721,10 +727,53 @@ async function updateDashboardStatus() {
     }
 }
 
+// Run full update - combines all operations
+async function runFullUpdate() {
+    const button = document.getElementById('run-button');
+    if (button) {
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Running...';
+    }
+    
+    try {
+        // Sequential execution: NWS ingestion → SPC ingestion → matching
+        showNotification('Starting NWS alert ingestion...', 'info');
+        const nwsResponse = await fetch('/internal/trigger-ingestion', { method: 'POST' });
+        const nwsResult = await nwsResponse.json();
+        showNotification(`NWS: ${nwsResult.message}`, nwsResult.status === 'success' ? 'success' : 'warning');
+        
+        showNotification('Starting SPC data ingestion...', 'info');
+        const spcResponse = await fetch('/internal/spc-ingest', { method: 'POST' });
+        const spcResult = await spcResponse.json();
+        showNotification(`SPC: ${spcResult.message}`, spcResult.status === 'success' ? 'success' : 'warning');
+        
+        showNotification('Running alert verification matching...', 'info');
+        const matchResponse = await fetch('/internal/spc-match', { method: 'POST' });
+        const matchResult = await matchResponse.json();
+        showNotification(`Matching: ${matchResult.message}`, matchResult.status === 'success' ? 'success' : 'warning');
+        
+        showNotification('Full update completed successfully!', 'success');
+        setTimeout(() => {
+            updateDashboardStatus();
+            loadTodaysAlerts();
+            loadSPCVerificationTable();
+        }, 2000);
+        
+    } catch (error) {
+        console.error('Error in full update:', error);
+        showNotification('Error during full update process', 'error');
+    } finally {
+        if (button) {
+            button.disabled = false;
+            button.innerHTML = '<i class="fas fa-play me-1"></i>Run Full Update';
+        }
+    }
+}
+
 // Trigger manual ingestion
 async function triggerIngestion() {
     try {
-        const response = await fetch('/internal/ingest', { method: 'POST' });
+        const response = await fetch('/internal/trigger-ingestion', { method: 'POST' });
         const result = await response.json();
         
         if (response.ok) {
