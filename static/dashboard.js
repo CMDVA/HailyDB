@@ -791,6 +791,72 @@ async function toggleScheduler() {
     }
 }
 
+// Refresh single date in verification table
+async function refreshSingleDateInTable(dateStr) {
+    try {
+        console.log(`[SINGLE REFRESH] Updating verification data for ${dateStr}`);
+        
+        // Get fresh verification data for just this date
+        const response = await fetch(`/internal/spc-verify?start_date=${dateStr}&end_date=${dateStr}&format=json`);
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log(`[SINGLE REFRESH] Fresh data for ${dateStr}:`, data);
+        
+        if (data.results && data.results.length > 0) {
+            const result = data.results[0];
+            
+            // Find the table row for this date
+            const table = document.querySelector('#todays-spc-events table tbody');
+            if (table) {
+                const rows = table.querySelectorAll('tr');
+                for (let row of rows) {
+                    const dateCell = row.querySelector('td:first-child');
+                    if (dateCell && dateCell.textContent === dateStr) {
+                        // Update this row
+                        const statusBadge = result.match_status === 'MATCH' 
+                            ? '<span class="badge bg-success">MATCH</span>'
+                            : result.match_status === 'MISMATCH'
+                            ? '<span class="badge bg-danger">MISMATCH</span>'
+                            : result.match_status === 'SPC_UNAVAILABLE'
+                            ? '<span class="badge bg-warning">SPC_UNAVAILABLE</span>'
+                            : '<span class="badge bg-secondary">PENDING</span>';
+                        
+                        const spcCount = result.spc_live_count !== null ? result.spc_live_count : 'N/A';
+                        const dateForUrl = result.date.replace(/-/g, '').slice(2);
+                        const externalLink = `<a href="https://www.spc.noaa.gov/climo/reports/${dateForUrl}_rpts.html" target="_blank" class="btn btn-xs btn-outline-primary me-1">
+                            <i class="fas fa-external-link-alt"></i>
+                        </a>`;
+                        const reuploadButton = result.match_status === 'MISMATCH' ? 
+                            `<button class="btn btn-xs btn-outline-warning" onclick="forceReingestion('${result.date}', this)">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>` : 
+                            `<button class="btn btn-xs btn-outline-secondary" disabled>
+                                <i class="fas fa-check"></i>
+                            </button>`;
+                        const actionButtons = externalLink + reuploadButton;
+                        
+                        row.innerHTML = `
+                            <td>${result.date}</td>
+                            <td>${result.hailydb_count}</td>
+                            <td>${spcCount}</td>
+                            <td>${statusBadge}</td>
+                            <td>${actionButtons}</td>
+                        `;
+                        
+                        console.log(`[SINGLE REFRESH] Updated row for ${dateStr}`);
+                        break;
+                    }
+                }
+            }
+        }
+    } catch (error) {
+        console.error(`[SINGLE REFRESH] Error refreshing ${dateStr}:`, error);
+    }
+}
+
 // Refresh dashboard
 function refreshDashboard() {
     location.reload();
@@ -978,10 +1044,10 @@ async function forceReingestion(date, buttonElement) {
             button.innerHTML = '<i class="fas fa-check"></i>';
             button.className = 'btn btn-sm btn-success';
             
-            // Refresh the SPC events data after a short delay
+            // Refresh only this specific date after a short delay
             setTimeout(() => {
-                console.log(`[SPC REIMPORT] Refreshing SPC events data...`);
-                refreshSPCVerificationData();
+                console.log(`[SPC REIMPORT] Refreshing data for ${date} only...`);
+                refreshSingleDateInTable(date);
             }, 1500);
             
         } else {
