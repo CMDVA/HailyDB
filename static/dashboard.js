@@ -177,7 +177,7 @@ async function loadTodaysSPCEvents() {
         
         if (verifyData.status === 'success' && verifyData.results) {
             let html = '<div class="table-responsive"><table class="table table-sm">';
-            html += '<thead><tr><th>Date</th><th>HailyDB</th><th>SPC Live</th><th>Status</th></tr></thead>';
+            html += '<thead><tr><th>Date</th><th>HailyDB</th><th>SPC Live</th><th>Status</th><th>Action</th></tr></thead>';
             html += '<tbody>';
             
             verifyData.results.forEach(result => {
@@ -194,6 +194,9 @@ async function loadTodaysSPCEvents() {
                     <td><span class="badge bg-primary">${result.hailydb_count}</span></td>
                     <td><span class="badge bg-secondary">${spcCount}</span></td>
                     <td>${statusBadge}</td>
+                    <td><button class="btn btn-sm btn-outline-primary" onclick="forceReingestion('${result.date}')" title="Force re-ingestion for this date">
+                        <i class="fas fa-sync-alt"></i>
+                    </button></td>
                 </tr>`;
             });
             
@@ -457,6 +460,35 @@ function displayIntegrityResults(results, summary) {
     `;
     
     container.innerHTML = html;
+}
+
+// Force re-ingestion for a specific date
+async function forceReingestion(date) {
+    if (!confirm(`Force re-ingestion for ${date}? This will re-download and process SPC data for this date.`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/internal/spc-reupload/${date}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showNotification(`Re-ingestion triggered for ${date}`, 'success');
+            // Refresh the SPC events data
+            loadTodaysSPCEvents();
+        } else {
+            showNotification(`Error: ${result.message}`, 'error');
+        }
+    } catch (error) {
+        console.error('Error triggering re-ingestion:', error);
+        showNotification('Error triggering re-ingestion', 'error');
+    }
 }
 
 console.log('Dashboard JavaScript loaded successfully');
