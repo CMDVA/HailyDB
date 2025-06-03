@@ -519,11 +519,16 @@ async function refreshSPCVerificationData() {
                     : '<span class="badge bg-secondary">PENDING</span>';
                 
                 const spcCount = result.spc_live_count !== null ? result.spc_live_count : 'N/A';
+                const dateForUrl = result.date.replace(/-/g, '').slice(2); // Convert 2025-05-21 to 250521
+                const externalLink = `<a href="https://www.spc.noaa.gov/climo/reports/${dateForUrl}_rpts.html" target="_blank" class="btn btn-xs btn-outline-primary me-1">
+                    <i class="fas fa-external-link-alt"></i>
+                </a>`;
                 const reuploadButton = result.match_status === 'MISMATCH' ? 
                     `<button class="btn btn-xs btn-outline-warning" onclick="forceReingestion('${result.date}', this)">
                         <i class="fas fa-sync-alt"></i>
                     </button>` : 
                     '<span class="text-muted">-</span>';
+                const actionButtons = externalLink + reuploadButton;
                 
                 const newRow = document.createElement('tr');
                 newRow.innerHTML = `
@@ -531,7 +536,7 @@ async function refreshSPCVerificationData() {
                     <td>${result.hailydb_count}</td>
                     <td>${spcCount}</td>
                     <td>${statusBadge}</td>
-                    <td>${reuploadButton}</td>
+                    <td>${actionButtons}</td>
                 `;
                 tbody.appendChild(newRow);
             });
@@ -635,11 +640,16 @@ async function loadNextWeek() {
                             : '<span class="badge bg-warning">PENDING</span>';
                         
                         const spcCount = result.spc_live_count !== null ? result.spc_live_count : 'N/A';
+                        const dateForUrl = result.date.replace(/-/g, '').slice(2); // Convert 2025-05-21 to 250521
+                        const externalLink = `<a href="https://www.spc.noaa.gov/climo/reports/${dateForUrl}_rpts.html" target="_blank" class="btn btn-xs btn-outline-primary me-1">
+                            <i class="fas fa-external-link-alt"></i>
+                        </a>`;
                         const reuploadButton = result.match_status === 'MISMATCH' ? 
                             `<button class="btn btn-xs btn-outline-warning" onclick="forceReingestion('${result.date}', this)">
                                 <i class="fas fa-sync-alt"></i>
                             </button>` : 
                             '<span class="text-muted">-</span>';
+                        const actionButtons = externalLink + reuploadButton;
                         
                         const newRow = document.createElement('tr');
                         newRow.innerHTML = `
@@ -647,7 +657,7 @@ async function loadNextWeek() {
                             <td>${result.hailydb_count}</td>
                             <td>${spcCount}</td>
                             <td>${statusBadge}</td>
-                            <td>${reuploadButton}</td>
+                            <td>${actionButtons}</td>
                         `;
                         tbody.appendChild(newRow);
                     });
