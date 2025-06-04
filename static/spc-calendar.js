@@ -166,7 +166,8 @@ class SPCCalendar {
             }
             
             // Only include dates that match the current month being rendered
-            if (year === monthDate.getFullYear() && month === monthDate.getMonth() + 1) {
+            // monthDate.getMonth() is 0-indexed, so add 1 to compare with parsed month
+            if (year === monthDate.getFullYear() && month === (monthDate.getMonth() + 1)) {
                 dataByDay[day] = item;
                 if (day === 1) {
                     console.log(`Added to dataByDay[${day}]:`, item);
