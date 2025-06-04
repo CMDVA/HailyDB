@@ -55,10 +55,12 @@ class MatchSummarizer:
                 temperature=0.3  # Lower temperature for factual consistency
             )
             
-            return response.choices[0].message.content.strip()
+            return response.choices[0].message.content.strip() if response.choices[0].message.content else None
             
         except Exception as e:
             print(f"Error generating match summary: {e}")
+            import traceback
+            traceback.print_exc()
             return None
     
     def _prepare_context(self, alert: Dict, spc_reports: List[Dict]) -> Dict:

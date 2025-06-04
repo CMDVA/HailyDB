@@ -297,9 +297,19 @@
                             }
                         </td>
                         <td>
-                            <a href="/alerts/${match.id}" class="btn btn-sm btn-outline-primary" target="_blank">
-                                <i class="fas fa-eye me-1"></i>View Alert
-                            </a>
+                            <div class="btn-group-vertical" role="group">
+                                <a href="/alerts/${match.id}" class="btn btn-sm btn-outline-primary mb-1" target="_blank">
+                                    <i class="fas fa-eye me-1"></i>View Alert
+                                </a>
+                                ${match.spc_ai_summary ? 
+                                    `<button class="btn btn-sm btn-outline-success" onclick="generateSingleAISummary('${match.id}')" title="Regenerate AI Summary">
+                                        <i class="fas fa-sync me-1"></i>Regenerate
+                                    </button>` :
+                                    `<button class="btn btn-sm btn-success" onclick="generateSingleAISummary('${match.id}')" title="Generate AI Summary">
+                                        <i class="fas fa-robot me-1"></i>Generate AI
+                                    </button>`
+                                }
+                            </div>
                         </td>
                     </tr>
                 `;
@@ -346,6 +356,50 @@
             .finally(() => {
                 button.disabled = false;
                 button.innerHTML = originalText;
+            });
+        }
+        
+        function generateSingleAISummary(alertId) {
+            // Find the button for this specific alert
+            const button = event.target.closest('button');
+            const originalText = button.innerHTML;
+            
+            button.disabled = true;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Generating...';
+            
+            fetch(`/internal/spc-generate-summary/${alertId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update the AI summary cell in the current row
+                    const row = button.closest('tr');
+                    const summaryCell = row.querySelector('td:nth-child(6)'); // AI Summary column
+                    summaryCell.innerHTML = `<div class="text-muted small" style="max-width: 300px;">${data.summary}</div>`;
+                    
+                    // Update button to "Regenerate" style
+                    button.className = 'btn btn-sm btn-outline-success';
+                    button.title = 'Regenerate AI Summary';
+                    button.innerHTML = '<i class="fas fa-sync me-1"></i>Regenerate';
+                    
+                    alert('AI summary generated successfully!');
+                } else {
+                    alert(`Error generating AI summary: ${data.error}`);
+                }
+            })
+            .catch(error => {
+                console.error('Error generating AI summary:', error);
+                alert('Error generating AI summary. Please try again.');
+            })
+            .finally(() => {
+                button.disabled = false;
+                if (button.innerHTML.includes('Generating...')) {
+                    button.innerHTML = originalText;
+                }
             });
         }
         

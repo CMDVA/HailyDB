@@ -865,6 +865,48 @@ def generate_ai_summaries():
         logger.error(f"AI summary generation failed: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/internal/spc-generate-summary/<alert_id>', methods=['POST'])
+def generate_single_ai_summary(alert_id):
+    """Generate AI summary for a specific verified alert match"""
+    from match_summarizer import MatchSummarizer
+    
+    try:
+        # Get the specific alert
+        alert = Alert.query.filter_by(id=alert_id).first()
+        
+        if not alert:
+            return jsonify({'success': False, 'error': 'Alert not found'}), 404
+        
+        if not alert.spc_verified:
+            return jsonify({'success': False, 'error': 'Alert is not SPC verified'}), 400
+        
+        if not alert.spc_reports:
+            return jsonify({'success': False, 'error': 'No SPC reports linked to this alert'}), 400
+        
+        # Generate AI summary
+        summarizer = MatchSummarizer()
+        summary = summarizer.generate_match_summary(
+            alert=alert.to_dict(),
+            spc_reports=alert.spc_reports
+        )
+        
+        if summary:
+            alert.spc_ai_summary = summary
+            db.session.commit()
+            
+            return jsonify({
+                'success': True,
+                'message': 'AI summary generated successfully',
+                'summary': summary
+            })
+        else:
+            return jsonify({'success': False, 'error': 'Failed to generate AI summary'}), 500
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Single AI summary generation failed for alert {alert_id}: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/internal/scheduler/start', methods=['POST'])
 def start_autonomous_scheduler():
     """Start autonomous scheduler"""
