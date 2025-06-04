@@ -252,24 +252,38 @@ class SPCIngestService:
                           report_date: date, line_num: int) -> Optional[Dict]:
         """Parse a single report line based on section type"""
         try:
-            # Use CSV reader to handle quoted fields properly
-            reader = csv.reader(StringIO(line))
-            values = next(reader)
+            # SPC CSV has malformed data - Comments field often has unquoted commas
+            # We need to parse manually by splitting on commas but preserving the last field
+            parts = line.split(',')
             
+            if len(parts) < len(headers):
+                logger.warning(f"Too few columns at line {line_num}: expected {len(headers)}, got {len(parts)}")
+                return None
+            
+            # For malformed CSV with extra commas in Comments (last field)
+            if len(parts) > len(headers):
+                # Take first N-1 fields normally, then join remaining parts as Comments
+                values = parts[:len(headers)-1]
+                # Join all remaining parts as the Comments field
+                comments_parts = parts[len(headers)-1:]
+                values.append(','.join(comments_parts))
+                logger.debug(f"Fixed CSV line {line_num} with {len(parts)} parts into {len(values)} fields")
+            else:
+                values = parts
+            
+            # Handle extra state field issue (from previous fix)
+            if len(values) == len(headers) + 1:
+                # Common case: extra state field - merge location and first extra field
+                if len(values) >= 5:
+                    # Merge location with what appears to be an extra state field
+                    values[2] = f"{values[2]} {values[3]}"  # Merge location and extra field
+                    values = values[:3] + values[4:]  # Remove the extra field
+                    logger.info(f"Fixed malformed line {line_num} by merging location fields")
+            
+            # Final validation
             if len(values) != len(headers):
-                logger.warning(f"Column count mismatch at line {line_num}: expected {len(headers)}, got {len(values)}")
-                # Try to fix common malformed data issues
-                if len(values) == len(headers) + 1:
-                    # Common case: extra state field - merge location and first extra field
-                    if len(values) >= 5:
-                        # Merge location with what appears to be an extra state field
-                        values[2] = f"{values[2]} {values[3]}"  # Merge location and extra field
-                        values = values[:3] + values[4:]  # Remove the extra field
-                        logger.info(f"Fixed malformed line {line_num} by merging location fields")
-                
-                # If still mismatched, skip the line
-                if len(values) != len(headers):
-                    return None
+                logger.warning(f"Column count still mismatched at line {line_num}: expected {len(headers)}, got {len(values)}")
+                return None
             
             # Create column mapping
             data = dict(zip(headers, values))
