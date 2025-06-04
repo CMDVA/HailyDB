@@ -175,10 +175,21 @@
                                         <a href="{{ url_for('get_alert', alert_id=alert.id) }}" class="text-decoration-none">
                                             {{ alert.event or 'Unknown Event' }}
                                         </a>
+                                        {% if alert.spc_verified %}
+                                            <span class="badge bg-success ms-2" title="HailyDB Verified - Confirmed by SPC Reports">
+                                                <i class="fas fa-star me-1"></i>HAILYDB VERIFIED
+                                            </span>
+                                        {% endif %}
                                     </h5>
                                     <p class="text-muted mb-2">
                                         <i class="fas fa-map-marker-alt me-1"></i>
                                         {{ alert.area_desc or 'Area not specified' }}
+                                        {% if alert.spc_verified and alert.spc_report_count %}
+                                            <span class="text-success ms-2">
+                                                <i class="fas fa-check-circle me-1"></i>
+                                                {{ alert.spc_report_count }} confirmed report{{ 's' if alert.spc_report_count != 1 else '' }}
+                                            </span>
+                                        {% endif %}
                                     </p>
                                 </div>
                             </div>
