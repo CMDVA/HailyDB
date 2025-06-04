@@ -1058,6 +1058,76 @@ def spc_verify_today():
             'error': str(e)
         }), 500
 
+@app.route('/api/spc/calendar-verification')
+def spc_calendar_verification():
+    """Get 60-day SPC verification data for calendar view"""
+    try:
+        from datetime import date, timedelta
+        import requests
+        
+        # Get date range (60 days back from today)
+        end_date = date.today()
+        start_date = end_date - timedelta(days=59)  # 60 days total including today
+        
+        verification_results = []
+        current_date = start_date
+        
+        while current_date <= end_date:
+            # Get HailyDB count for this date
+            hailydb_count = SPCReport.query.filter(SPCReport.report_date == current_date).count()
+            
+            # Get live SPC count by fetching the CSV
+            date_str = current_date.strftime("%y%m%d")
+            url = f"https://www.spc.noaa.gov/climo/reports/{date_str}_rpts_filtered.csv"
+            
+            try:
+                response = requests.get(url, timeout=10)
+                response.raise_for_status()
+                
+                # Count total data rows (subtract 3 for headers)
+                lines = response.text.strip().split('\n')
+                total_lines = len(lines)
+                spc_live_count = max(0, total_lines - 3)
+                
+                match_status = 'MATCH' if hailydb_count == spc_live_count else 'MISMATCH'
+                
+                verification_results.append({
+                    'date': current_date.strftime('%Y-%m-%d'),
+                    'day': current_date.day,
+                    'hailydb_count': hailydb_count,
+                    'spc_live_count': spc_live_count,
+                    'match_status': match_status
+                })
+                
+            except requests.RequestException:
+                # SPC file not available for this date
+                verification_results.append({
+                    'date': current_date.strftime('%Y-%m-%d'),
+                    'day': current_date.day,
+                    'hailydb_count': hailydb_count,
+                    'spc_live_count': None,
+                    'match_status': 'PENDING' if current_date == end_date else 'UNAVAILABLE'
+                })
+            
+            current_date += timedelta(days=1)
+        
+        return jsonify({
+            'status': 'success',
+            'results': verification_results,
+            'date_range': {
+                'start': start_date.strftime('%Y-%m-%d'),
+                'end': end_date.strftime('%Y-%m-%d')
+            },
+            'last_updated': datetime.utcnow().isoformat()
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in SPC calendar verification: {e}")
+        return jsonify({
+            'status': 'error',
+            'error': str(e)
+        }), 500
+
 # Home route
 @app.route('/')
 def index():
