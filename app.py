@@ -1076,16 +1076,30 @@ def spc_calendar_verification():
         verification_results = []
         current_date = start_date
         
+        # Use batch database query for better performance
+        all_reports = {}
+        date_range_reports = SPCReport.query.filter(
+            SPCReport.report_date >= start_date,
+            SPCReport.report_date <= end_date
+        ).all()
+        
+        # Group by date for fast lookup
+        for report in date_range_reports:
+            date_key = report.report_date.strftime('%Y-%m-%d')
+            if date_key not in all_reports:
+                all_reports[date_key] = 0
+            all_reports[date_key] += 1
+        
         while current_date <= end_date:
-            # Get HailyDB count for this date
-            hailydb_count = SPCReport.query.filter(SPCReport.report_date == current_date).count()
+            date_key = current_date.strftime('%Y-%m-%d')
+            hailydb_count = all_reports.get(date_key, 0)
             
-            # Get live SPC count by fetching the CSV
+            # Get live SPC count by fetching the CSV with shorter timeout
             date_str = current_date.strftime("%y%m%d")
             url = f"https://www.spc.noaa.gov/climo/reports/{date_str}_rpts_filtered.csv"
             
             try:
-                response = requests.get(url, timeout=10)
+                response = requests.get(url, timeout=5)  # Reduced timeout
                 response.raise_for_status()
                 
                 # Count total data rows (subtract 3 for headers)
@@ -1096,7 +1110,7 @@ def spc_calendar_verification():
                 match_status = 'MATCH' if hailydb_count == spc_live_count else 'MISMATCH'
                 
                 verification_results.append({
-                    'date': current_date.strftime('%Y-%m-%d'),
+                    'date': date_key,
                     'day': current_date.day,
                     'hailydb_count': hailydb_count,
                     'spc_live_count': spc_live_count,
@@ -1106,7 +1120,7 @@ def spc_calendar_verification():
             except requests.RequestException:
                 # SPC file not available for this date
                 verification_results.append({
-                    'date': current_date.strftime('%Y-%m-%d'),
+                    'date': date_key,
                     'day': current_date.day,
                     'hailydb_count': hailydb_count,
                     'spc_live_count': None,
