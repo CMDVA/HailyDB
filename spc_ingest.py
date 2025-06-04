@@ -177,15 +177,19 @@ class SPCIngestService:
     
     def _parse_spc_csv(self, csv_content: str, report_date: date) -> Dict:
         """
-        Parse the multi-section SPC CSV content
+        Parse multi-section SPC CSV with comprehensive malformation handling
         Returns dict with parsed reports by type
         """
-        lines = csv_content.strip().split('\n')
+        # Pre-process CSV to handle multi-line records and truncated lines
+        processed_content = self._preprocess_csv_content(csv_content)
+        lines = processed_content.strip().split('\n')
+        
         reports = []
         current_section = None
         current_headers = None
         
         tornado_count = wind_count = hail_count = 0
+        failed_lines = []
         
         for line_num, line in enumerate(lines):
             if not line.strip():
@@ -197,18 +201,19 @@ class SPCIngestService:
                 logger.debug(f"Found {current_section} section at line {line_num + 1}")
                 continue
             
-            # Parse data lines
+            # Parse data lines with comprehensive error recovery
             if current_section and current_headers:
-                # Apply aggressive error recovery for all parsing attempts
                 report = None
+                
+                # Primary parser attempt
                 try:
                     report = self._parse_report_line(
                         line, current_section, current_headers, report_date, line_num + 1
                     )
                 except Exception as e:
-                    logger.debug(f"Standard parser failed line {line_num + 1}: {e}")
+                    logger.debug(f"Primary parser failed line {line_num + 1}: {e}")
                 
-                # If standard parsing fails, try emergency fallback parsing
+                # Emergency fallback if primary fails
                 if not report:
                     try:
                         report = self._emergency_parse_line(
@@ -217,9 +222,17 @@ class SPCIngestService:
                         if report:
                             logger.info(f"Emergency parser recovered line {line_num + 1}")
                     except Exception as e:
-                        logger.warning(f"Emergency parser also failed line {line_num + 1}: {e}")
+                        logger.debug(f"Emergency parser failed line {line_num + 1}: {e}")
                 
-                # Store successful parse results
+                # Final aggressive recovery attempt
+                if not report:
+                    report = self._aggressive_recovery_parse(
+                        line, current_section, report_date, line_num + 1
+                    )
+                    if report:
+                        logger.info(f"Aggressive recovery succeeded line {line_num + 1}")
+                
+                # Store results
                 if report:
                     reports.append(report)
                     if current_section == 'tornado':
@@ -229,19 +242,141 @@ class SPCIngestService:
                     elif current_section == 'hail':
                         hail_count += 1
                 else:
+                    failed_lines.append((line_num + 1, line[:100]))
                     logger.error(f"Complete parsing failure at line {line_num + 1}: {line[:100]}")
         
         logger.info(f"CSV parsing complete: {len(lines)} total lines processed")
         logger.info(f"Sections detected: tornado={tornado_count}, wind={wind_count}, hail={hail_count}")
         logger.info(f"Total reports parsed: {len(reports)}")
+        logger.info(f"Failed to parse {len(failed_lines)} lines")
         
         return {
             'reports': reports,
             'total_reports': len(reports),
             'tornado_count': tornado_count,
             'wind_count': wind_count,
-            'hail_count': hail_count
+            'hail_count': hail_count,
+            'failed_lines': failed_lines
         }
+    
+    def _preprocess_csv_content(self, csv_content: str) -> str:
+        """Pre-process CSV to handle multi-line records and formatting issues"""
+        lines = csv_content.split('\n')
+        processed_lines = []
+        
+        i = 0
+        while i < len(lines):
+            line = lines[i].strip()
+            
+            # Skip empty lines
+            if not line:
+                i += 1
+                continue
+            
+            # Keep header lines as-is
+            if self._is_header_line(line):
+                processed_lines.append(line)
+                i += 1
+                continue
+            
+            # For data lines, check if they're complete (have minimum field count)
+            if line.count(',') >= 6:  # Minimum fields for valid SPC record
+                processed_lines.append(line)
+                i += 1
+            else:
+                # Potentially incomplete line - try to merge with next line
+                merged_line = line
+                j = i + 1
+                while j < len(lines) and merged_line.count(',') < 6:
+                    next_line = lines[j].strip()
+                    if next_line and not self._is_header_line(next_line):
+                        merged_line += " " + next_line
+                        j += 1
+                    else:
+                        break
+                
+                processed_lines.append(merged_line)
+                i = j
+        
+        return '\n'.join(processed_lines)
+    
+    def _aggressive_recovery_parse(self, line: str, section_type: str, report_date: date, line_num: int) -> Optional[Dict]:
+        """Final attempt parser using minimal field extraction"""
+        try:
+            line = line.strip()
+            if not line or len(line) < 10:
+                return None
+            
+            # Extract any recognizable patterns with regex
+            import re
+            
+            # Pattern to match time (4 digits), magnitude, and basic location info
+            basic_pattern = r'^(\d{4}),([^,]*),([^,]+)'
+            match = re.match(basic_pattern, line)
+            
+            if not match:
+                return None
+            
+            time_val, mag_val, location_val = match.groups()
+            
+            # Extract additional fields using simple parsing
+            remaining = line[match.end():]
+            parts = remaining.split(',')
+            
+            # Build minimal viable record
+            report = {
+                'report_date': report_date,
+                'report_type': section_type,
+                'time_utc': time_val.strip(),
+                'location': location_val.strip(),
+                'county': parts[0].strip() if len(parts) > 0 else 'Unknown',
+                'state': parts[1].strip() if len(parts) > 1 else 'UNK',
+                'latitude': None,
+                'longitude': None,
+                'comments': ','.join(parts[4:]).strip() if len(parts) > 4 else '',
+                'magnitude': self._parse_magnitude(mag_val.strip(), section_type),
+                'raw_csv_line': line
+            }
+            
+            # Try to extract coordinates
+            for part in parts:
+                try:
+                    val = float(part.strip())
+                    if 20 <= abs(val) <= 90 and report['latitude'] is None:
+                        report['latitude'] = val
+                    elif 60 <= abs(val) <= 180 and report['longitude'] is None:
+                        report['longitude'] = val
+                except ValueError:
+                    continue
+            
+            return report
+            
+        except Exception as e:
+            logger.debug(f"Aggressive recovery failed line {line_num}: {e}")
+            return None
+    
+    def _parse_magnitude(self, mag_str: str, section_type: str) -> dict:
+        """Parse magnitude field based on section type"""
+        try:
+            if section_type == 'tornado':
+                return {'f_scale': mag_str} if mag_str != 'UNK' else {}
+            elif section_type == 'wind':
+                if mag_str == 'UNK':
+                    return {'speed_text': 'UNK', 'speed': None}
+                try:
+                    speed = int(mag_str)
+                    return {'speed': speed}
+                except ValueError:
+                    return {'speed_text': mag_str, 'speed': None}
+            elif section_type == 'hail':
+                try:
+                    size = int(mag_str)
+                    return {'size_hundredths': size, 'size_inches': size / 100.0}
+                except ValueError:
+                    return {}
+            return {}
+        except Exception:
+            return {}
     
     def _is_header_line(self, line: str) -> bool:
         """Check if line is a section header"""
