@@ -376,3 +376,147 @@ footer {
 ::-webkit-scrollbar-thumb:hover {
     background: hsl(var(--dark));
 }
+
+/* =====================
+   Calendar Component Styles
+   ===================== */
+
+.calendar-month {
+    background: white;
+    border-radius: 8px;
+    padding: 1rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.calendar-header {
+    text-align: center;
+    font-weight: 600;
+    font-size: 16px;
+    color: hsl(var(--dark));
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid hsl(var(--secondary));
+}
+
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+}
+
+.calendar-day-header {
+    padding: 0.5rem 0.25rem;
+    text-align: center;
+    font-weight: 500;
+    font-size: 10px;
+    color: hsl(var(--muted));
+    background-color: hsl(var(--secondary));
+}
+
+.calendar-day {
+    position: relative;
+    min-height: 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: default;
+    border: 1px solid hsl(var(--secondary));
+    background-color: white;
+    transition: all 0.2s ease;
+}
+
+.calendar-day.other-month {
+    color: hsl(var(--muted));
+    background-color: hsl(var(--primary));
+}
+
+.calendar-day.today {
+    background-color: hsl(var(--accent) / 0.1);
+    border-color: hsl(var(--accent));
+    font-weight: 600;
+}
+
+.calendar-day-number {
+    font-size: 10px;
+    font-weight: 500;
+    line-height: 1;
+    margin-bottom: 2px;
+}
+
+.calendar-day-badge {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    min-width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    font-size: 8px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    line-height: 1;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.calendar-day-badge.match {
+    background-color: hsl(var(--success));
+    cursor: default;
+}
+
+.calendar-day-badge.mismatch {
+    background-color: hsl(var(--danger));
+    cursor: pointer;
+}
+
+.calendar-day-badge.mismatch:hover {
+    transform: scale(1.1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.calendar-day-badge.processing {
+    background-color: hsl(var(--warning));
+    cursor: default;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+.calendar-day-badge.unavailable {
+    background-color: hsl(var(--muted));
+    cursor: default;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+.calendar-day-count {
+    font-size: 8px;
+    color: hsl(var(--muted));
+    margin-top: 1px;
+    line-height: 1;
+}
+
+/* Responsive calendar adjustments */
+@media (max-width: 768px) {
+    .calendar-month {
+        padding: 0.5rem;
+    }
+    
+    .calendar-day {
+        min-height: 32px;
+    }
+    
+    .calendar-day-number {
+        font-size: 9px;
+    }
+    
+    .calendar-day-badge {
+        width: 14px;
+        height: 14px;
+        font-size: 7px;
+    }
+}
