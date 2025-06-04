@@ -199,22 +199,37 @@ class SPCIngestService:
             
             # Parse data lines
             if current_section and current_headers:
+                # Apply aggressive error recovery for all parsing attempts
+                report = None
                 try:
                     report = self._parse_report_line(
                         line, current_section, current_headers, report_date, line_num + 1
                     )
-                    if report:
-                        reports.append(report)
-                        if current_section == 'tornado':
-                            tornado_count += 1
-                        elif current_section == 'wind':
-                            wind_count += 1
-                        elif current_section == 'hail':
-                            hail_count += 1
-                            
                 except Exception as e:
-                    logger.warning(f"Error parsing line {line_num + 1}: {line[:50]}... - {e}")
-                    continue
+                    logger.debug(f"Standard parser failed line {line_num + 1}: {e}")
+                
+                # If standard parsing fails, try emergency fallback parsing
+                if not report:
+                    try:
+                        report = self._emergency_parse_line(
+                            line, current_section, report_date, line_num + 1
+                        )
+                        if report:
+                            logger.info(f"Emergency parser recovered line {line_num + 1}")
+                    except Exception as e:
+                        logger.warning(f"Emergency parser also failed line {line_num + 1}: {e}")
+                
+                # Store successful parse results
+                if report:
+                    reports.append(report)
+                    if current_section == 'tornado':
+                        tornado_count += 1
+                    elif current_section == 'wind':
+                        wind_count += 1
+                    elif current_section == 'hail':
+                        hail_count += 1
+                else:
+                    logger.error(f"Complete parsing failure at line {line_num + 1}: {line[:100]}")
         
         logger.info(f"CSV parsing complete: {len(lines)} total lines processed")
         logger.info(f"Sections detected: tornado={tornado_count}, wind={wind_count}, hail={hail_count}")
@@ -248,9 +263,105 @@ class SPCIngestService:
         else:
             return 'unknown', headers
     
+    def _emergency_parse_line(self, line: str, section_type: str, report_date: date, line_num: int) -> Optional[Dict]:
+        """
+        Emergency fallback parser for critically malformed SPC CSV lines
+        Uses aggressive pattern matching to extract essential data
+        """
+        try:
+            line = line.strip()
+            if not line:
+                return None
+            
+            # Split by comma and extract what we can
+            parts = [p.strip() for p in line.split(',')]
+            
+            if len(parts) < 4:  # Absolute minimum: Time, Mag, Location, County
+                return None
+            
+            # Emergency field extraction with defaults
+            time_field = parts[0] if parts[0] else "0000"
+            magnitude_field = parts[1] if len(parts) > 1 else "UNK"
+            location_field = parts[2] if len(parts) > 2 else "Unknown"
+            
+            # Extract county, state, coordinates with fallbacks
+            county_field = "Unknown"
+            state_field = "UNK"
+            latitude = None
+            longitude = None
+            comments = ""
+            
+            # Scan for recognizable patterns
+            for i, part in enumerate(parts):
+                # Look for state codes (2-letter uppercase)
+                if len(part) == 2 and part.isalpha() and part.isupper():
+                    state_field = part
+                    if i > 0:
+                        county_field = parts[i-1]
+                
+                # Look for coordinates (numeric with decimal)
+                try:
+                    float_val = float(part)
+                    if -180 <= float_val <= 180:
+                        if latitude is None and 20 <= abs(float_val) <= 90:
+                            latitude = float_val
+                        elif longitude is None and 60 <= abs(float_val) <= 180:
+                            longitude = float_val
+                except ValueError:
+                    continue
+            
+            # Join remaining parts as comments
+            if len(parts) > 7:
+                comments = ','.join(parts[7:])
+            
+            # Create magnitude structure based on section type
+            if section_type == 'tornado':
+                magnitude = {'f_scale': magnitude_field} if magnitude_field != 'UNK' else {}
+            elif section_type == 'wind':
+                if magnitude_field == 'UNK':
+                    magnitude = {'speed_text': 'UNK', 'speed': None}
+                else:
+                    try:
+                        speed = int(magnitude_field)
+                        magnitude = {'speed': speed}
+                    except ValueError:
+                        magnitude = {'speed_text': magnitude_field, 'speed': None}
+            elif section_type == 'hail':
+                try:
+                    size = int(magnitude_field)
+                    magnitude = {
+                        'size_hundredths': size,
+                        'size_inches': size / 100.0
+                    }
+                except ValueError:
+                    magnitude = {}
+            else:
+                magnitude = {}
+            
+            # Build report structure
+            report = {
+                'report_date': report_date,
+                'report_type': section_type,
+                'time_utc': time_field,
+                'location': location_field,
+                'county': county_field,
+                'state': state_field,
+                'latitude': latitude,
+                'longitude': longitude,
+                'comments': comments,
+                'magnitude': magnitude,
+                'raw_csv_line': line
+            }
+            
+            return report
+            
+        except Exception as e:
+            logger.error(f"Emergency parser failed on line {line_num}: {e}")
+            return None
+    
     def _parse_report_line(self, line: str, section_type: str, headers: List[str], 
                           report_date: date, line_num: int) -> Optional[Dict]:
-        """Parse a single report line based on section type with robust SPC CSV handling"""
+        """Parse a single report line with aggressive SPC CSV error recovery"""
         try:
             # Strip whitespace and skip empty lines
             line = line.strip()
@@ -258,49 +369,73 @@ class SPCIngestService:
                 return None
             
             # SPC CSV structure: Time,Magnitude,Location,County,State,Lat,Lon,Comments
-            # The Comments field is the last field and often contains unquoted commas
-            # We need to parse by taking the first 7 fields and joining the rest as Comments
+            # The Comments field often contains unquoted commas, breaking standard CSV parsing
             
-            parts = line.split(',')
+            # Split by comma to get all parts
+            parts = [p.strip() for p in line.split(',')]
             
-            if len(parts) < len(headers):
-                logger.warning(f"Too few columns at line {line_num}: expected {len(headers)}, got {len(parts)} - {line[:100]}")
+            if len(parts) < 7:  # Minimum viable SPC record
+                logger.warning(f"Insufficient data at line {line_num}: {len(parts)} parts - {line[:100]}")
                 return None
             
-            # Extract the structured fields (first 7 fields for SPC format)
-            # Time, Magnitude, Location, County, State, Lat, Lon, Comments
-            if len(parts) >= len(headers):
-                values = []
-                
-                # Take first 7 fields as-is
-                for i in range(len(headers) - 1):
-                    values.append(parts[i].strip())
-                
-                # Join remaining parts as the Comments field (last field)
-                if len(parts) > len(headers) - 1:
-                    comments_parts = parts[len(headers)-1:]
-                    comments = ','.join(comments_parts).strip()
-                    values.append(comments)
-                    logger.debug(f"Reconstructed line {line_num}: {len(parts)} parts -> {len(values)} fields")
-                else:
-                    # No comments field
-                    values.append('')
+            # Aggressive parsing: Always assume first 7 fields are structured data
+            # Time, Magnitude, Location, County, State, Lat, Lon
+            # Everything after position 6 becomes Comments (joined with commas)
+            
+            values = []
+            values.append(parts[0])  # Time
+            values.append(parts[1])  # Magnitude (F_Scale/Speed/Size)
+            values.append(parts[2])  # Location
+            values.append(parts[3])  # County
+            values.append(parts[4])  # State
+            values.append(parts[5])  # Lat
+            values.append(parts[6])  # Lon
+            
+            # Join everything from position 7 onward as Comments
+            if len(parts) > 7:
+                comments = ','.join(parts[7:])
+                values.append(comments)
             else:
-                values = parts
+                values.append('')  # Empty comments
             
-            # Handle specific SPC malformations
-            if len(values) == len(headers) + 1:
-                # Common case: extra state field between Location and County
-                # Format often: Time,Mag,Location,ExtraState,County,State,Lat,Lon,Comments
-                if len(values) >= 6:
-                    # Merge location field with the extra state
-                    values[2] = f"{values[2]} {values[3]}"  # Merge location with extra field
-                    values = values[:3] + values[4:]  # Remove the extra field
-                    logger.info(f"Fixed extra state field at line {line_num}")
+            # Handle the common extra state field malformation
+            # Pattern: Time,Mag,Location,ExtraState,County,State,Lat,Lon,Comments
+            if len(parts) >= 9:
+                # Check if we have an extra state field by examining state codes
+                potential_extra_state = parts[3]
+                county = parts[4]
+                state = parts[5]
+                
+                # If parts[3] looks like a state code (2 chars) and parts[4] doesn't look like coordinates
+                if (len(potential_extra_state) == 2 and potential_extra_state.isalpha() and 
+                    not county.replace('.', '').replace('-', '').replace('+', '').isdigit()):
+                    
+                    # Merge location with extra state
+                    location_merged = f"{parts[2]} {parts[3]}"
+                    values = [
+                        parts[0],  # Time
+                        parts[1],  # Magnitude
+                        location_merged,  # Location + ExtraState
+                        parts[4],  # County
+                        parts[5],  # State
+                        parts[6],  # Lat
+                        parts[7],  # Lon
+                        ','.join(parts[8:]) if len(parts) > 8 else ''  # Comments
+                    ]
+                    logger.debug(f"Fixed extra state field at line {line_num}: {potential_extra_state}")
             
-            # Final validation
+            # Ensure we have exactly the right number of fields
+            while len(values) < len(headers):
+                values.append('')
+            
+            if len(values) > len(headers):
+                # Too many fields - truncate to expected count
+                logger.debug(f"Truncated excess fields at line {line_num}: {len(values)} -> {len(headers)}")
+                values = values[:len(headers)]
+            
+            # Final safety check
             if len(values) != len(headers):
-                logger.warning(f"Could not parse line {line_num}: expected {len(headers)}, got {len(values)} - {line[:100]}")
+                logger.error(f"Critical parsing failure at line {line_num}: {len(values)} vs {len(headers)} - {line[:100]}")
                 return None
             
             # Create column mapping
