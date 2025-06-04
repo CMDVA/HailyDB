@@ -258,7 +258,18 @@ class SPCIngestService:
             
             if len(values) != len(headers):
                 logger.warning(f"Column count mismatch at line {line_num}: expected {len(headers)}, got {len(values)}")
-                return None
+                # Try to fix common malformed data issues
+                if len(values) == len(headers) + 1:
+                    # Common case: extra state field - merge location and first extra field
+                    if len(values) >= 5:
+                        # Merge location with what appears to be an extra state field
+                        values[2] = f"{values[2]} {values[3]}"  # Merge location and extra field
+                        values = values[:3] + values[4:]  # Remove the extra field
+                        logger.info(f"Fixed malformed line {line_num} by merging location fields")
+                
+                # If still mismatched, skip the line
+                if len(values) != len(headers):
+                    return None
             
             # Create column mapping
             data = dict(zip(headers, values))
