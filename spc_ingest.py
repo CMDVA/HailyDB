@@ -342,21 +342,27 @@ class SPCIngestService:
                             continue
                     
                     # Create SPCReport object
-                    report = SPCReport(
-                        report_date=report_data['report_date'],
-                        report_type=report_data['report_type'],
-                        time_utc=report_data['time_utc'],
-                        location=report_data['location'],
-                        county=report_data['county'],
-                        state=report_data['state'],
-                        latitude=report_data['latitude'],
-                        longitude=report_data['longitude'],
-                        comments=report_data['comments'],
-                        magnitude=report_data['magnitude'],
-                        raw_csv_line=report_data['raw_csv_line']
-                    )
-                    
-                    self.db.add(report)
+                    try:
+                        report = SPCReport(
+                            report_date=report_data['report_date'],
+                            report_type=report_data['report_type'],
+                            time_utc=report_data['time_utc'],
+                            location=report_data['location'],
+                            county=report_data['county'],
+                            state=report_data['state'],
+                            latitude=report_data['latitude'],
+                            longitude=report_data['longitude'],
+                            comments=report_data['comments'],
+                            magnitude=report_data['magnitude'],
+                            raw_csv_line=report_data['raw_csv_line']
+                        )
+                        
+                        self.db.add(report)
+                        
+                    except Exception as insert_error:
+                        logger.warning(f"Failed to insert report: {insert_error}")
+                        # Skip this report and continue with the next one
+                        continue
                     
                     # Only track processed keys for regular operations
                     if not is_reimport and processed_keys is not None:
@@ -380,6 +386,10 @@ class SPCIngestService:
             except Exception as e:
                 self.db.rollback()
                 logger.error(f"Error processing batch {i//batch_size + 1}: {e}")
+                # Reset counts for failed batch
+                for report_data in batch:
+                    if report_data['report_type'] in counts:
+                        counts[report_data['report_type']] = max(0, counts[report_data['report_type']] - 1)
                 continue
         
         logger.info(f"Successfully stored {sum(counts.values())} total reports for {report_date}")
