@@ -198,7 +198,7 @@ class SPCCalendar {
                 currentDate.setDate(startDate.getDate() + (week * 7) + day);
                 
                 const dayNum = currentDate.getDate();
-                const isCurrentMonth = currentDate.getMonth() === month - 1;
+                const isCurrentMonth = currentDate.getFullYear() === year && currentDate.getMonth() === month - 1;
                 const isToday = this.isToday(currentDate);
                 const dayData = isCurrentMonth ? dataByDay[dayNum] : null;
                 
