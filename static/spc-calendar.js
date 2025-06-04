@@ -162,9 +162,18 @@ class SPCCalendar {
             const itemMonth = parseInt(dateParts[1]);
             const itemDay = parseInt(dateParts[2]);
             
+            // Debug logging for day 1
+            if (itemDay === 1) {
+                console.log(`Processing day 1 data: ${item.date}, year=${itemYear}, month=${itemMonth}, target=${targetYear}-${targetMonth}`);
+                console.log(`Match check: ${itemYear === targetYear && itemMonth === targetMonth}`);
+            }
+            
             // Only include dates that match the current month being rendered
             if (itemYear === targetYear && itemMonth === targetMonth) {
                 dataByDay[itemDay] = item;
+                if (itemDay === 1) {
+                    console.log(`Added day 1 to dataByDay:`, item);
+                }
             }
         });
         
