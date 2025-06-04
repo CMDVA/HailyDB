@@ -1,5 +1,5 @@
 /**
- * NWS Alert Service Dashboard JavaScript
+ * HailyDB Dashboard JavaScript
  * Focused on data integrity verification and system monitoring
  */
 
