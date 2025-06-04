@@ -201,38 +201,30 @@ class SPCIngestService:
                 logger.debug(f"Found {current_section} section at line {line_num + 1}")
                 continue
             
-            # Parse data lines with comprehensive error recovery
-            if current_section and current_headers:
+            # Parse data lines - ensure every valid data line is processed
+            if current_section and current_headers and len(line) >= 4 and line[:4].isdigit():
                 report = None
                 
-                # Primary parser attempt
+                # Primary parser with forced success for valid CSV structure
                 try:
                     report = self._parse_report_line(
                         line, current_section, current_headers, report_date, line_num + 1
                     )
                 except Exception as e:
-                    logger.debug(f"Primary parser failed line {line_num + 1}: {e}")
+                    logger.warning(f"Primary parser failed line {line_num + 1}: {e}")
                 
-                # Emergency fallback if primary fails
+                # Aggressive fallback for any line that starts with time
                 if not report:
                     try:
-                        report = self._emergency_parse_line(
+                        report = self._force_parse_valid_line(
                             line, current_section, report_date, line_num + 1
                         )
                         if report:
-                            logger.info(f"Emergency parser recovered line {line_num + 1}")
+                            logger.info(f"Force parser recovered line {line_num + 1}")
                     except Exception as e:
-                        logger.debug(f"Emergency parser failed line {line_num + 1}: {e}")
+                        logger.error(f"Force parser failed line {line_num + 1}: {e}")
                 
-                # Final aggressive recovery attempt
-                if not report:
-                    report = self._aggressive_recovery_parse(
-                        line, current_section, report_date, line_num + 1
-                    )
-                    if report:
-                        logger.info(f"Aggressive recovery succeeded line {line_num + 1}")
-                
-                # Store results
+                # Store results - every time-starting line must be captured
                 if report:
                     reports.append(report)
                     if current_section == 'tornado':
@@ -243,7 +235,7 @@ class SPCIngestService:
                         hail_count += 1
                 else:
                     failed_lines.append((line_num + 1, line[:100]))
-                    logger.error(f"Complete parsing failure at line {line_num + 1}: {line[:100]}")
+                    logger.error(f"CRITICAL: Lost data record at line {line_num + 1}: {line[:100]}")
         
         logger.info(f"CSV parsing complete: {len(lines)} total lines processed")
         logger.info(f"Sections detected: tornado={tornado_count}, wind={wind_count}, hail={hail_count}")
@@ -260,7 +252,7 @@ class SPCIngestService:
         }
     
     def _preprocess_csv_content(self, csv_content: str) -> str:
-        """Pre-process CSV to handle multi-line records and formatting issues"""
+        """Pre-process CSV to handle multi-line records and section transitions"""
         lines = csv_content.split('\n')
         processed_lines = []
         
@@ -279,24 +271,31 @@ class SPCIngestService:
                 i += 1
                 continue
             
-            # For data lines, check if they're complete (have minimum field count)
-            if line.count(',') >= 6:  # Minimum fields for valid SPC record
-                processed_lines.append(line)
-                i += 1
+            # Check if line looks like a valid data record (starts with 4-digit time)
+            if len(line) >= 4 and line[:4].isdigit():
+                # Valid data line - check if it has enough commas
+                if line.count(',') >= 6:
+                    processed_lines.append(line)
+                    i += 1
+                else:
+                    # Try to merge with continuation lines
+                    merged_line = line
+                    j = i + 1
+                    while j < len(lines) and merged_line.count(',') < 6:
+                        next_line = lines[j].strip()
+                        if (next_line and not self._is_header_line(next_line) and 
+                            not (len(next_line) >= 4 and next_line[:4].isdigit())):
+                            merged_line += " " + next_line
+                            j += 1
+                        else:
+                            break
+                    
+                    processed_lines.append(merged_line)
+                    i = j
             else:
-                # Potentially incomplete line - try to merge with next line
-                merged_line = line
-                j = i + 1
-                while j < len(lines) and merged_line.count(',') < 6:
-                    next_line = lines[j].strip()
-                    if next_line and not self._is_header_line(next_line):
-                        merged_line += " " + next_line
-                        j += 1
-                    else:
-                        break
-                
-                processed_lines.append(merged_line)
-                i = j
+                # Skip malformed lines that don't start with time
+                logger.debug(f"Skipping malformed line {i+1}: {line[:50]}")
+                i += 1
         
         return '\n'.join(processed_lines)
     
@@ -353,6 +352,61 @@ class SPCIngestService:
             
         except Exception as e:
             logger.debug(f"Aggressive recovery failed line {line_num}: {e}")
+            return None
+    
+    def _force_parse_valid_line(self, line: str, section_type: str, report_date: date, line_num: int) -> Optional[Dict]:
+        """Force parse any line that starts with 4-digit time - guaranteed success for valid CSV"""
+        try:
+            line = line.strip()
+            if not line or len(line) < 4 or not line[:4].isdigit():
+                return None
+            
+            # Split on commas - SPC CSV has exactly 8 fields: Time,Mag,Location,County,State,Lat,Lon,Comments
+            parts = line.split(',')
+            if len(parts) < 7:
+                return None
+            
+            # Force extract the 8 standard fields
+            time_field = parts[0].strip()
+            magnitude_field = parts[1].strip()
+            location_field = parts[2].strip()
+            county_field = parts[3].strip()
+            state_field = parts[4].strip()
+            
+            # Extract coordinates with error handling
+            latitude = None
+            longitude = None
+            try:
+                latitude = float(parts[5].strip()) if parts[5].strip() else None
+            except ValueError:
+                pass
+            try:
+                longitude = float(parts[6].strip()) if parts[6].strip() else None
+            except ValueError:
+                pass
+            
+            # Comments field - everything after the 7th comma
+            comments_field = ','.join(parts[7:]).strip() if len(parts) > 7 else ''
+            
+            # Build complete report structure
+            report = {
+                'report_date': report_date,
+                'report_type': section_type,
+                'time_utc': time_field,
+                'location': location_field,
+                'county': county_field,
+                'state': state_field,
+                'latitude': latitude,
+                'longitude': longitude,
+                'comments': comments_field,
+                'magnitude': self._parse_magnitude(magnitude_field, section_type),
+                'raw_csv_line': line
+            }
+            
+            return report
+            
+        except Exception as e:
+            logger.error(f"Force parser critical failure line {line_num}: {e}")
             return None
     
     def _parse_magnitude(self, mag_str: str, section_type: str) -> dict:
