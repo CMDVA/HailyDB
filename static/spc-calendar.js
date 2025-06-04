@@ -198,6 +198,13 @@ class SPCCalendar {
                 const isToday = this.isToday(currentDate);
                 const dayData = isCurrentMonth ? dataByDay[dayNum] : null;
                 
+                // Debug logging for day 1
+                if (dayNum === 1 && isCurrentMonth) {
+                    console.log(`Day 1 check: dataByDay[1] =`, dataByDay[1]);
+                    console.log(`dayData =`, dayData);
+                    console.log(`All dataByDay keys:`, Object.keys(dataByDay));
+                }
+                
                 let dayClass = 'calendar-day';
                 if (!isCurrentMonth) dayClass += ' other-month';
                 if (isToday) dayClass += ' today';
