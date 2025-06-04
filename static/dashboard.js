@@ -440,7 +440,7 @@ async function loadTodaysAlerts() {
                         
                         pageHtml += `<tr>
                             <td>${dateTime}</td>
-                            <td><span class="badge bg-${severityBadge}">${alert.severity || 'N/A'}</span></td>
+                            <td><span class="severity-badge ${severityBadge}">${alert.severity || 'N/A'}</span></td>
                             <td>${alert.event}</td>
                             <td>${shortArea}</td>
                             <td><a href="/alert/${alert.id}" class="btn btn-sm btn-outline-primary">View Details</a></td>
