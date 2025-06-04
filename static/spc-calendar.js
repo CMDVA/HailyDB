@@ -149,7 +149,7 @@ class SPCCalendar {
     renderMonth(monthKey, monthData) {
         const [year, month] = monthKey.split('-').map(Number);
         const monthDate = new Date(year, month - 1, 1);
-        const monthName = this.monthNames[monthDate.getMonth()];
+        const monthName = this.monthNames[month - 1];
         
         // Create data lookup by day - use ISO date string parsing to avoid timezone issues
         const dataByDay = {};
@@ -166,8 +166,8 @@ class SPCCalendar {
             }
             
             // Only include dates that match the current month being rendered
-            // monthDate.getMonth() is 0-indexed, so add 1 to compare with parsed month
-            if (year === monthDate.getFullYear() && month === (monthDate.getMonth() + 1)) {
+            // Compare parsed month directly with the month from monthKey
+            if (year === parseInt(monthKey.split('-')[0]) && month === parseInt(monthKey.split('-')[1])) {
                 dataByDay[day] = item;
                 if (day === 1) {
                     console.log(`Added to dataByDay[${day}]:`, item);
