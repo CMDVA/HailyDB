@@ -17,12 +17,12 @@
     --light: 210 20% 98%; /* #F7FAFC */
     --muted: 210 6% 56%; /* #8794A6 */
     
-    /* Severity Colors */
-    --severity-extreme: 0 100% 50%; /* #FF0000 */
-    --severity-severe: 30 100% 50%; /* #FF8C00 */
-    --severity-moderate: 60 100% 50%; /* #FFD700 */
-    --severity-minor: 120 100% 40%; /* #32CD32 */
-    --severity-unknown: 0 0% 60%; /* #999999 */
+    /* Severity Colors - Green to Orange to Red scale */
+    --severity-extreme: 0 85% 45%; /* Dark Red - #DC2626 */
+    --severity-severe: 25 95% 53%; /* Orange - #FB923C */
+    --severity-moderate: 45 93% 47%; /* Dark Orange - #EA580C */
+    --severity-minor: 142 76% 36%; /* Dark Green - #16A34A */
+    --severity-unknown: 0 0% 45%; /* Dark Gray - #737373 */
 }
 
 /* Base Styles */
@@ -122,7 +122,7 @@ body {
 
 .severity-moderate {
     background-color: hsl(var(--severity-moderate));
-    color: hsl(var(--dark));
+    color: white;
 }
 
 .severity-minor {
