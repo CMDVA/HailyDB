@@ -135,15 +135,7 @@
                             </optgroup>
                         </select>
                     </div>
-                    <div class="col-md-2">
-                        <label for="spc_verified" class="form-label">HailyDB Status</label>
-                        <select class="form-select" id="spc_verified" name="spc_verified">
-                            <option value="" {{ 'selected' if not request.args.get('spc_verified') }}>All Alerts</option>
-                            <option value="true" {{ 'selected' if request.args.get('spc_verified') == 'true' }}>⭐ Verified Only</option>
-                            <option value="false" {{ 'selected' if request.args.get('spc_verified') == 'false' }}>Unverified Only</option>
-                        </select>
-                    </div>
-                    <div class="col-md-2">
+                    <div class="col-md-3">
                         <label for="per_page" class="form-label">Per Page</label>
                         <select class="form-select" id="per_page" name="per_page">
                             <option value="25" {{ 'selected' if request.args.get('per_page', '50') == '25' }}>25</option>
@@ -183,21 +175,10 @@
                                         <a href="{{ url_for('get_alert', alert_id=alert.id) }}" class="text-decoration-none">
                                             {{ alert.event or 'Unknown Event' }}
                                         </a>
-                                        {% if alert.spc_verified %}
-                                            <span class="badge bg-success ms-2" title="HailyDB Verified - Confirmed by SPC Reports">
-                                                <i class="fas fa-star me-1"></i>HAILYDB VERIFIED
-                                            </span>
-                                        {% endif %}
                                     </h5>
                                     <p class="text-muted mb-2">
                                         <i class="fas fa-map-marker-alt me-1"></i>
                                         {{ alert.area_desc or 'Area not specified' }}
-                                        {% if alert.spc_verified and alert.spc_report_count %}
-                                            <span class="text-success ms-2">
-                                                <i class="fas fa-check-circle me-1"></i>
-                                                {{ alert.spc_report_count }} confirmed report{{ 's' if alert.spc_report_count != 1 else '' }}
-                                            </span>
-                                        {% endif %}
                                     </p>
                                 </div>
                             </div>
