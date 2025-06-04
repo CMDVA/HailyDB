@@ -1,0 +1,93 @@
+the true root cause is the duplication handling in your database logic, not the CSV parser.
+
+✅ Summary of Root Cause
+Layer	Status	Explanation
+CSV Parsing	✅ Fully working	All 247 records parsed, no structure errors or skipped lines.
+Record Objects	✅ Valid	All records are being correctly instantiated and prepared for DB insert.
+DB Insertion Logic	❌ Flawed	Entire batch is rolled back when any single record violates a constraint.
+Constraint Type	UniqueViolation	Your constraint (e.g. report_date, raw_csv_line) triggers rollback.
+
+📉 What’s Actually Happening
+When a batch like this is inserted:
+
+python
+Copy
+Edit
+[Record A, Record B, Record C (duplicate), Record D, Record E]
+...and Record C violates the unique constraint, then:
+
+flush() attempts to apply all records to session
+
+commit() fails due to Record C
+
+rollback() undoes all records in the batch — including valid A, B, D, E
+
+The result: all 5 are lost, not just the bad one
+
+Here’s the Corrected Strategy:
+python
+Copy
+Edit
+for report in report_batch:
+    try:
+        self.db.add(report)
+        self.db.flush()  # Flush individual insert
+        success_count += 1
+    except IntegrityError as e:
+        self.db.rollback()  # Rollback only the failed insert
+        logger.warning(f"Duplicate report skipped: {report.raw_csv_line}")
+    except Exception as e:
+        self.db.rollback()
+        logger.error(f"Unhandled error on report: {e}")
+Then once the loop finishes:
+
+python
+Copy
+Edit
+try:
+    self.db.commit()
+except Exception as e:
+    logger.error(f"Final commit failed after individual inserts: {e}")
+    self.db.rollback()
+🚨 Why This Works
+Individual rollback only affects the failed record.
+
+Other successfully flushed rows remain intact.
+
+Your database session is never left dirty or in an error state.
+
+You still get a clean audit trail of:
+
+How many succeeded
+
+Which ones were skipped
+
+Total recovered
+
+🧪 Testing Strategy
+Replay March 15th File:
+
+Load 031524_rpts_filtered.csv through poll_spc_for_date('2024-03-15')
+
+Confirm exactly 247 records stored
+
+Log how many were flagged as duplicates (should be zero)
+
+Verify Logging:
+
+Ensure all flush() and commit() actions are wrapped
+
+Confirm duplicate skips are logged as warning, not error
+
+Postfix Integrity Test:
+
+Run ingestion twice (idempotency test)
+
+Second run should report 247 duplicates skipped, 0 new stored
+
+🛠 Bonus Enhancements (Optional)
+Add a dry_run=True mode to log without writing to DB
+
+Track duplicates_skipped and insert_success counters per batch
+
+Write daily summary into spc_ingestion_logs

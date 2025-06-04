@@ -694,23 +694,21 @@ class SPCIngestService:
             return None
     
     def _store_reports(self, reports: List[Dict], report_date: date, is_reimport: bool = False) -> Dict[str, int]:
-        """Store parsed reports in database with batch processing to avoid timeouts"""
+        """Store parsed reports with individual record insertion to prevent batch failures"""
         counts = {'tornado': 0, 'wind': 0, 'hail': 0}
-        processed_keys = set() if not is_reimport else None  # Skip duplicate tracking for reimports
-        batch_size = 50  # Process in smaller batches
+        duplicates_skipped = 0
+        errors_count = 0
+        batch_size = 50
         
-        # Process reports in batches to avoid timeout with large datasets
+        # Process reports in batches for performance
         for i in range(0, len(reports), batch_size):
             batch = reports[i:i + batch_size]
-            batch_count = 0
-            
-            # Individual record processing moved to commit section below
-            
-            # Process each record individually to avoid batch failure on duplicates
             successful_in_batch = 0
+            
+            # Individual record processing - prevents entire batch rollback
             for report_data in batch:
                 try:
-                    # Ensure magnitude is proper dict, not stringified JSON
+                    # Prepare magnitude data
                     magnitude_data = report_data['magnitude']
                     if isinstance(magnitude_data, str):
                         import json
@@ -719,6 +717,7 @@ class SPCIngestService:
                         except (json.JSONDecodeError, TypeError):
                             magnitude_data = {}
                     
+                    # Create SPCReport object
                     report = SPCReport(
                         report_date=report_data['report_date'],
                         report_type=report_data['report_type'],
@@ -733,30 +732,36 @@ class SPCIngestService:
                         raw_csv_line=report_data['raw_csv_line']
                     )
                     
+                    # Add and flush individual record
                     self.db.add(report)
-                    self.db.flush()  # Check for constraint violations immediately
+                    self.db.flush()
+                    
+                    # Success - increment counters
                     successful_in_batch += 1
                     counts[report_data['report_type']] += 1
                     
                 except IntegrityError as ie:
-                    # Handle duplicate records individually - don't fail entire batch
+                    # Individual rollback only affects this record
                     self.db.rollback()
+                    duplicates_skipped += 1
                     if 'uq_spc_report_csv_unique' in str(ie):
-                        logger.debug(f"Skipping duplicate record: {report_data['raw_csv_line'][:50]}...")
+                        logger.debug(f"Duplicate skipped: {report_data['raw_csv_line'][:50]}...")
                     else:
-                        logger.error(f"Integrity error for record: {ie}")
+                        logger.warning(f"Constraint violation: {ie}")
+                        
                 except Exception as e:
+                    # Individual rollback preserves other successful records
                     self.db.rollback()
-                    logger.error(f"Failed to insert individual record: {e}")
+                    errors_count += 1
+                    logger.error(f"Failed to insert record: {e}")
+                    logger.debug(f"Failed record data: {report_data['raw_csv_line'][:100]}")
                     continue
             
             # Commit successful records in batch
             try:
-                if successful_in_batch > 0 and not is_reimport:
+                if successful_in_batch > 0:
                     self.db.commit()
                     logger.info(f"Batch {i//batch_size + 1}: stored {successful_in_batch}/{len(batch)} reports")
-                elif successful_in_batch > 0:
-                    logger.info(f"Batch {i//batch_size + 1}: processed {successful_in_batch}/{len(batch)} reports (reimport)")
             except Exception as e:
                 self.db.rollback()
                 logger.error(f"Error committing batch {i//batch_size + 1}: {e}")
@@ -764,10 +769,22 @@ class SPCIngestService:
                 for _ in range(successful_in_batch):
                     for report_type in counts:
                         counts[report_type] = max(0, counts[report_type] - 1)
-                continue
         
-        logger.info(f"Successfully stored {sum(counts.values())} total reports for {report_date}")
-        return counts
+        total_stored = sum(counts.values())
+        logger.info(f"Successfully stored {total_stored} total reports for {report_date}")
+        if duplicates_skipped > 0:
+            logger.info(f"Skipped {duplicates_skipped} duplicate records")
+        if errors_count > 0:
+            logger.warning(f"Failed to insert {errors_count} records due to errors")
+        
+        return {
+            'tornado': counts['tornado'],
+            'wind': counts['wind'], 
+            'hail': counts['hail'],
+            'duplicates_skipped': duplicates_skipped,
+            'errors_count': errors_count,
+            'total_stored': total_stored
+        }
     
     def get_ingestion_stats(self) -> Dict:
         """Get SPC ingestion statistics"""
