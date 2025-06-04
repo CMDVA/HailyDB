@@ -290,7 +290,8 @@ class SPCIngestService:
             elif section_type == 'wind':
                 speed_raw = data.get('Speed', '').strip()
                 if speed_raw == 'UNK':
-                    report['magnitude'] = {'speed': 'UNK'}
+                    # Store UNK as string field to avoid PostgreSQL JSONB validation errors
+                    report['magnitude'] = {'speed_text': 'UNK', 'speed': None}
                 elif speed_raw:
                     try:
                         speed = int(speed_raw)
@@ -302,7 +303,8 @@ class SPCIngestService:
             elif section_type == 'hail':
                 size_raw = data.get('Size', '').strip()
                 if size_raw == 'UNK':
-                    report['magnitude'] = {'size': 'UNK'}
+                    # Store UNK as string field to avoid PostgreSQL JSONB validation errors
+                    report['magnitude'] = {'size_text': 'UNK', 'size': None}
                 elif size_raw:
                     try:
                         size_hundredths = int(size_raw)
@@ -341,8 +343,17 @@ class SPCIngestService:
                         if raw_line in processed_keys:
                             continue
                     
-                    # Create SPCReport object
+                    # Create SPCReport object with proper JSON handling
                     try:
+                        # Ensure magnitude is proper dict, not stringified JSON
+                        magnitude_data = report_data['magnitude']
+                        if isinstance(magnitude_data, str):
+                            import json
+                            try:
+                                magnitude_data = json.loads(magnitude_data)
+                            except (json.JSONDecodeError, TypeError):
+                                magnitude_data = {}
+                        
                         report = SPCReport(
                             report_date=report_data['report_date'],
                             report_type=report_data['report_type'],
@@ -353,7 +364,7 @@ class SPCIngestService:
                             latitude=report_data['latitude'],
                             longitude=report_data['longitude'],
                             comments=report_data['comments'],
-                            magnitude=report_data['magnitude'],
+                            magnitude=magnitude_data,
                             raw_csv_line=report_data['raw_csv_line']
                         )
                         
