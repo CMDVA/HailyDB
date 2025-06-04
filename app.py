@@ -90,6 +90,7 @@ def get_alerts():
     area = request.args.get('area')
     effective_date = request.args.get('effective_date')
     active_only = request.args.get('active_only', 'false').lower() == 'true'
+    spc_verified = request.args.get('spc_verified')
     
     query = Alert.query.order_by(Alert.effective.desc())
     
@@ -117,6 +118,11 @@ def get_alerts():
             Alert.effective <= now,
             Alert.expires > now
         )
+    if spc_verified:
+        if spc_verified.lower() == 'true':
+            query = query.filter(Alert.spc_verified == True)
+        elif spc_verified.lower() == 'false':
+            query = query.filter(Alert.spc_verified == False)
     
     alerts = query.paginate(
         page=page,
