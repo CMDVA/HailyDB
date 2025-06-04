@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple
 from sqlalchemy import and_, or_, func
 from models import Alert, SPCReport, db
+from match_summarizer import MatchSummarizer
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +20,7 @@ class SPCMatchingService:
     
     def __init__(self, db_session):
         self.db = db_session
+        self.summarizer = MatchSummarizer()
         
         # Event correlation mapping
         self.event_correlations = {
@@ -118,6 +120,18 @@ class SPCMatchingService:
         alert.spc_match_method = match_method
         alert.spc_confidence_score = confidence
         alert.spc_report_count = len(matches)
+        
+        # Generate AI summary for verified matches
+        try:
+            ai_summary = self.summarizer.generate_match_summary(
+                alert=alert.to_dict(),
+                spc_reports=alert.spc_reports
+            )
+            if ai_summary:
+                alert.spc_ai_summary = ai_summary
+                logger.info(f"Generated AI summary for alert {alert.id}")
+        except Exception as e:
+            logger.warning(f"Failed to generate AI summary for alert {alert.id}: {e}")
         
         logger.info(f"Matched alert {alert.id} with {len(matches)} SPC reports via {match_method}")
         
