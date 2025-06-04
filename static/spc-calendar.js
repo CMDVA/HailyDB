@@ -151,12 +151,19 @@ class SPCCalendar {
         const monthDate = new Date(year, month - 1, 1);
         const monthName = this.monthNames[monthDate.getMonth()];
         
-        // Create data lookup by day
+        // Create data lookup by day - use ISO date string parsing to avoid timezone issues
         const dataByDay = {};
         monthData.forEach(item => {
-            const date = new Date(item.date);
-            const day = date.getDate();
-            dataByDay[day] = item;
+            // Parse date directly from YYYY-MM-DD format to avoid timezone shifts
+            const dateParts = item.date.split('-');
+            const year = parseInt(dateParts[0]);
+            const month = parseInt(dateParts[1]);
+            const day = parseInt(dateParts[2]);
+            
+            // Only include dates that match the current month being rendered
+            if (year === monthDate.getFullYear() && month === monthDate.getMonth() + 1) {
+                dataByDay[day] = item;
+            }
         });
         
         // Generate calendar grid
