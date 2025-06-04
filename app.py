@@ -1065,9 +1065,13 @@ def spc_calendar_verification():
         from datetime import date, timedelta
         import requests
         
-        # Get date range (60 days back from today)
-        end_date = date.today()
-        start_date = end_date - timedelta(days=59)  # 60 days total including today
+        # Get offset parameter for navigation (0 = current 60 days, -1 = previous 60 days, etc.)
+        offset = int(request.args.get('offset', 0))
+        
+        # Calculate date range based on offset
+        base_end_date = date.today()
+        end_date = base_end_date - timedelta(days=offset * 60)
+        start_date = end_date - timedelta(days=59)  # 60 days total
         
         verification_results = []
         current_date = start_date

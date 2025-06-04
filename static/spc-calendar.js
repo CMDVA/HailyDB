@@ -7,6 +7,7 @@ class SPCCalendar {
     constructor() {
         this.currentData = [];
         this.isLoading = false;
+        this.currentOffset = 0; // 0 = current 60 days, -1 = previous 60 days, etc.
         this.monthNames = [
             'January', 'February', 'March', 'April', 'May', 'June',
             'July', 'August', 'September', 'October', 'November', 'December'
@@ -41,7 +42,7 @@ class SPCCalendar {
         this.showLoading();
         
         try {
-            const response = await fetch('/api/spc/calendar-verification');
+            const response = await fetch(`/api/spc/calendar-verification?offset=${this.currentOffset}`);
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
@@ -51,6 +52,7 @@ class SPCCalendar {
                 this.currentData = data.results;
                 this.renderCalendar();
                 this.updateDateRange(data.date_range);
+                this.updateNavigationButtons();
             } else {
                 throw new Error(data.error || 'Failed to load calendar data');
             }
@@ -196,8 +198,17 @@ class SPCCalendar {
                 
                 if (dayData) {
                     html += this.renderDayBadge(dayData);
-                    // Always show count for consistency (both match and mismatch days)
-                    html += `<div class="calendar-day-count">${dayData.hailydb_count}</div>`;
+                    // Show appropriate count based on match status
+                    if (dayData.match_status === 'MATCH') {
+                        // For matches: show SPC Live count below (should match HailyDB count)
+                        html += `<div class="calendar-day-count">${dayData.spc_live_count || dayData.hailydb_count}</div>`;
+                    } else if (dayData.match_status === 'MISMATCH') {
+                        // For mismatches: show SPC Live count below (different from badge)
+                        html += `<div class="calendar-day-count">${dayData.spc_live_count || 'N/A'}</div>`;
+                    } else {
+                        // For other status: show HailyDB count
+                        html += `<div class="calendar-day-count">${dayData.hailydb_count}</div>`;
+                    }
                 }
                 
                 html += '</div>';
@@ -322,13 +333,32 @@ class SPCCalendar {
     }
     
     navigatePrevious() {
-        // Future implementation for shifting date range backward
-        console.log('Navigate to previous 60 days');
+        // Go back 60 days
+        this.currentOffset -= 1;
+        this.loadCalendarData();
     }
     
     navigateNext() {
-        // Future implementation for shifting date range forward
-        console.log('Navigate to next 60 days');
+        // Go forward 60 days (but not past current date)
+        if (this.currentOffset < 0) {
+            this.currentOffset += 1;
+            this.loadCalendarData();
+        }
+    }
+    
+    updateNavigationButtons() {
+        const prevBtn = document.getElementById('calendar-prev');
+        const nextBtn = document.getElementById('calendar-next');
+        
+        // Enable/disable navigation buttons based on current offset
+        if (prevBtn) {
+            prevBtn.disabled = false; // Always allow going back
+        }
+        
+        if (nextBtn) {
+            // Disable next button if we're at current time period
+            nextBtn.disabled = (this.currentOffset >= 0);
+        }
     }
 }
 
