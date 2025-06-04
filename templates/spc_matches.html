@@ -152,10 +152,16 @@
                                     <option value="720">Last 30 Days</option>
                                 </select>
                             </div>
-                            <div class="col-md-2">
+                            <div class="col-md-1">
                                 <label class="form-label">&nbsp;</label>
                                 <button class="btn btn-primary d-block" onclick="loadMatches()">
                                     <i class="fas fa-search me-1"></i>Filter
+                                </button>
+                            </div>
+                            <div class="col-md-1">
+                                <label class="form-label">&nbsp;</label>
+                                <button class="btn btn-success d-block" onclick="generateAISummaries()" id="ai-summary-btn">
+                                    <i class="fas fa-robot me-1"></i>AI Summary
                                 </button>
                             </div>
                         </div>
@@ -177,6 +183,7 @@
                                         <th>Location</th>
                                         <th>Match Info</th>
                                         <th>SPC Reports</th>
+                                        <th>AI Summary</th>
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
@@ -222,7 +229,7 @@
                 .catch(error => {
                     console.error('Error loading matches:', error);
                     document.getElementById('matches-tbody').innerHTML = 
-                        '<tr><td colspan="6" class="text-center text-danger">Error loading matches</td></tr>';
+                        '<tr><td colspan="7" class="text-center text-danger">Error loading matches</td></tr>';
                 });
         }
         
@@ -284,6 +291,12 @@
                         </td>
                         <td>${spcReportsHtml}</td>
                         <td>
+                            ${match.spc_ai_summary ? 
+                                `<div class="text-muted small" style="max-width: 300px;">${match.spc_ai_summary}</div>` : 
+                                '<span class="text-muted">No AI summary</span>'
+                            }
+                        </td>
+                        <td>
                             <a href="/alerts/${match.id}" class="btn btn-sm btn-outline-primary" target="_blank">
                                 <i class="fas fa-eye me-1"></i>View Alert
                             </a>
@@ -301,6 +314,38 @@
                 hour: '2-digit',
                 minute: '2-digit',
                 hour12: true
+            });
+        }
+        
+        function generateAISummaries() {
+            const button = document.getElementById('ai-summary-btn');
+            const originalText = button.innerHTML;
+            
+            button.disabled = true;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Generating...';
+            
+            fetch('/internal/spc-generate-summaries', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(`Successfully generated ${data.generated} AI summaries for verified matches`);
+                    loadMatches(); // Refresh the table to show new summaries
+                } else {
+                    alert(`Error generating AI summaries: ${data.error}`);
+                }
+            })
+            .catch(error => {
+                console.error('Error generating AI summaries:', error);
+                alert('Error generating AI summaries. Please try again.');
+            })
+            .finally(() => {
+                button.disabled = false;
+                button.innerHTML = originalText;
             });
         }
         
