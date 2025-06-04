@@ -155,42 +155,30 @@ class SPCVerificationService:
         from app import db
         
         try:
-            # Force delete using raw SQL to bypass any ORM session caching issues
-            from sqlalchemy import text
+            # Use ORM-based deletion to avoid session conflicts
+            from models import SPCReport, SPCIngestionLog
             
             # Count existing reports first
-            count_result = db.session.execute(
-                text("SELECT COUNT(*) FROM spc_reports WHERE report_date = :date"),
-                {"date": check_date}
-            ).scalar()
-            existing_count = count_result or 0
+            existing_count = self.db.query(SPCReport).filter(
+                SPCReport.report_date == check_date
+            ).count()
             
-            # Force delete with raw SQL and immediate commit
-            delete_result = db.session.execute(
-                text("DELETE FROM spc_reports WHERE report_date = :date"),
-                {"date": check_date}
-            )
-            deleted_count = delete_result.rowcount
+            # Delete existing reports for this date
+            deleted_count = self.db.query(SPCReport).filter(
+                SPCReport.report_date == check_date
+            ).delete()
             
             # Also clear ingestion logs
-            db.session.execute(
-                text("DELETE FROM spc_ingestion_logs WHERE report_date = :date"),
-                {"date": check_date}
-            )
+            self.db.query(SPCIngestionLog).filter(
+                SPCIngestionLog.report_date == check_date
+            ).delete()
             
-            # Commit deletions immediately
-            db.session.commit()
-            logger.info(f"Force deleted {deleted_count} existing SPC reports for {check_date}")
+            # Commit deletions
+            self.db.commit()
+            logger.info(f"Deleted {deleted_count} existing SPC reports for {check_date}")
             
-            # Create a completely fresh session for ingestion
-            db.session.close()
-            from app import db as fresh_db
-            
-            # Ensure fresh session is clean
-            fresh_db.session.rollback()
-            
-            # Now re-ingest the data with fresh session
-            spc_ingester = SPCIngestService(fresh_db.session)
+            # Now re-ingest the data with same session
+            spc_ingester = SPCIngestService(self.db)
             result = spc_ingester.poll_spc_reports(check_date)
             
             return {
