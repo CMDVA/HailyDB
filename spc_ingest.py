@@ -92,8 +92,14 @@ class SPCIngestService:
             
             logger.info(f"Polling SPC reports from {url}")
             
-            # Download CSV
-            response = requests.get(url, timeout=Config.REQUEST_TIMEOUT)
+            # Download CSV with proper headers to get complete data
+            headers = {
+                'User-Agent': 'HailyDB-SPC-Ingestion/2.0 (contact@hailydb.com)',
+                'Accept': 'text/csv,text/plain,*/*',
+                'Accept-Encoding': 'identity',  # Disable compression to avoid truncation
+                'Connection': 'keep-alive'
+            }
+            response = requests.get(url, headers=headers, timeout=Config.REQUEST_TIMEOUT)
             logger.info(f"Response status: {response.status_code}")
             logger.info(f"Response headers: {dict(response.headers)}")
             logger.info(f"Response encoding: {response.encoding}")
