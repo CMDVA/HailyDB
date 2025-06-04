@@ -371,7 +371,7 @@ class SPCIngestService:
                         self.db.add(report)
                         
                     except Exception as insert_error:
-                        logger.warning(f"Failed to insert report: {insert_error}")
+                        logger.error(f"Failed to insert report at line {report_data.get('raw_csv_line', 'unknown')[:100]}: {insert_error}")
                         # Skip this report and continue with the next one
                         continue
                     

@@ -181,9 +181,8 @@ class SPCReport(db.Model):
         Index('idx_spc_date_type', 'report_date', 'report_type'),
         Index('idx_spc_location', 'state', 'county'),
         Index('idx_spc_coords', 'latitude', 'longitude'),
-        # Ensure no duplicate reports from same CSV parse
-        UniqueConstraint('report_date', 'report_type', 'time_utc', 'latitude', 'longitude', 
-                        name='uq_spc_report_unique'),
+        # Use raw CSV line for true duplicate detection - multiple reports can occur at same time/location
+        UniqueConstraint('report_date', 'raw_csv_line', name='uq_spc_report_csv_unique'),
     )
 
     def __repr__(self):
