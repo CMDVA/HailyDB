@@ -336,7 +336,7 @@ class SPCIngestService:
                     continue
                 
                 # Check if report already exists using the unique constraint fields
-                existing = SPCReport.query.filter(
+                existing = self.db.query(SPCReport).filter(
                     SPCReport.report_date == report_data['report_date'],
                     SPCReport.report_type == report_data['report_type'],
                     SPCReport.time_utc == report_data['time_utc'],
