@@ -134,8 +134,11 @@ class SPCCalendar {
         const grouped = {};
         
         data.forEach(item => {
-            const date = new Date(item.date);
-            const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+            // Parse date directly from YYYY-MM-DD format to avoid timezone shifts
+            const dateParts = item.date.split('-');
+            const year = parseInt(dateParts[0]);
+            const month = parseInt(dateParts[1]);
+            const monthKey = `${year}-${String(month).padStart(2, '0')}`;
             
             if (!grouped[monthKey]) {
                 grouped[monthKey] = [];
@@ -162,18 +165,9 @@ class SPCCalendar {
             const itemMonth = parseInt(dateParts[1]);
             const itemDay = parseInt(dateParts[2]);
             
-            // Debug logging for day 1
-            if (itemDay === 1) {
-                console.log(`Processing day 1 data: ${item.date}, year=${itemYear}, month=${itemMonth}, target=${targetYear}-${targetMonth}`);
-                console.log(`Match check: ${itemYear === targetYear && itemMonth === targetMonth}`);
-            }
-            
             // Only include dates that match the current month being rendered
             if (itemYear === targetYear && itemMonth === targetMonth) {
                 dataByDay[itemDay] = item;
-                if (itemDay === 1) {
-                    console.log(`Added day 1 to dataByDay:`, item);
-                }
             }
         });
         
@@ -206,13 +200,6 @@ class SPCCalendar {
                 const isCurrentMonth = currentDate.getMonth() === month - 1;
                 const isToday = this.isToday(currentDate);
                 const dayData = isCurrentMonth ? dataByDay[dayNum] : null;
-                
-                // Debug logging for day 1
-                if (dayNum === 1 && isCurrentMonth) {
-                    console.log(`Day 1 check: dataByDay[1] =`, dataByDay[1]);
-                    console.log(`dayData =`, dayData);
-                    console.log(`All dataByDay keys:`, Object.keys(dataByDay));
-                }
                 
                 let dayClass = 'calendar-day';
                 if (!isCurrentMonth) dayClass += ' other-month';
