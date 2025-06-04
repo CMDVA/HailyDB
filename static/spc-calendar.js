@@ -201,9 +201,7 @@ class SPCCalendar {
                 const isToday = this.isToday(currentDate);
                 const dayData = isCurrentMonth ? dataByDay[dayNum] : null;
                 
-                if (isCurrentMonth && monthKey === '2025-03' && dayNum <= 5) {
-                    console.log(`March ${dayNum}: dayData =`, dayData, `dataByDay[${dayNum}] =`, dataByDay[dayNum]);
-                }
+
                 
                 let dayClass = 'calendar-day';
                 if (!isCurrentMonth) dayClass += ' other-month';
