@@ -153,25 +153,18 @@ class SPCCalendar {
         
         // Create data lookup by day - use ISO date string parsing to avoid timezone issues
         const dataByDay = {};
+        const [targetYear, targetMonth] = monthKey.split('-').map(Number);
+        
         monthData.forEach(item => {
             // Parse date directly from YYYY-MM-DD format to avoid timezone shifts
             const dateParts = item.date.split('-');
-            const year = parseInt(dateParts[0]);
-            const month = parseInt(dateParts[1]);
-            const day = parseInt(dateParts[2]);
-            
-            // Debug logging for first days of months
-            if (day === 1) {
-                console.log(`Processing ${item.date}: year=${year}, month=${month}, day=${day}, monthDate=${monthDate.getFullYear()}-${monthDate.getMonth() + 1}, hailydb=${item.hailydb_count}, spc=${item.spc_live_count}`);
-            }
+            const itemYear = parseInt(dateParts[0]);
+            const itemMonth = parseInt(dateParts[1]);
+            const itemDay = parseInt(dateParts[2]);
             
             // Only include dates that match the current month being rendered
-            // Compare parsed month directly with the month from monthKey
-            if (year === parseInt(monthKey.split('-')[0]) && month === parseInt(monthKey.split('-')[1])) {
-                dataByDay[day] = item;
-                if (day === 1) {
-                    console.log(`Added to dataByDay[${day}]:`, item);
-                }
+            if (itemYear === targetYear && itemMonth === targetMonth) {
+                dataByDay[itemDay] = item;
             }
         });
         
