@@ -334,15 +334,11 @@ class SPCIngestService:
                 try:
                     # Check duplicates only for regular operations, not for direct SPC ingestion or reimports
                     if not is_reimport and processed_keys is not None:
-                        # Create unique key for duplicate detection
-                        unique_key = (
-                            report_data['report_date'],
-                            report_data['report_type'],
-                            report_data['raw_csv_line']
-                        )
+                        # Use raw CSV line as unique key - this is the complete row content
+                        raw_line = report_data['raw_csv_line']
                         
-                        # Skip if already processed in this session (for regular operations only)
-                        if unique_key in processed_keys:
+                        # Skip if this exact raw CSV line was already processed in this session
+                        if raw_line in processed_keys:
                             continue
                     
                     # Create SPCReport object
@@ -364,7 +360,7 @@ class SPCIngestService:
                     
                     # Only track processed keys for regular operations
                     if not is_reimport and processed_keys is not None:
-                        processed_keys.add(unique_key)
+                        processed_keys.add(raw_line)
                     
                     counts[report_data['report_type']] += 1
                     batch_count += 1
