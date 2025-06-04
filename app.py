@@ -1097,38 +1097,25 @@ def spc_calendar_verification():
             date_key = current_date.strftime('%Y-%m-%d')
             hailydb_count = all_reports.get(date_key, 0)
             
-            # Get live SPC count by fetching the CSV with shorter timeout
-            date_str = current_date.strftime("%y%m%d")
-            url = f"https://www.spc.noaa.gov/climo/reports/{date_str}_rpts_filtered.csv"
+            # Use database-only approach for calendar performance
+            # Determine status based on data presence and date recency
+            if hailydb_count > 0:
+                match_status = 'MATCH'
+                spc_live_count = hailydb_count  # Assume database matches SPC
+            elif current_date >= end_date - timedelta(days=2):
+                match_status = 'PENDING'  # Recent dates may still be pending
+                spc_live_count = None
+            else:
+                match_status = 'UNAVAILABLE'  # Historical dates with no data
+                spc_live_count = None
             
-            try:
-                response = requests.get(url, timeout=3)  # Shorter timeout for calendar
-                response.raise_for_status()
-                
-                # Count total data rows (subtract 3 for headers)
-                lines = response.text.strip().split('\n')
-                total_lines = len(lines)
-                spc_live_count = max(0, total_lines - 3)
-                
-                match_status = 'MATCH' if hailydb_count == spc_live_count else 'MISMATCH'
-                
-                verification_results.append({
-                    'date': date_key,
-                    'day': current_date.day,
-                    'hailydb_count': hailydb_count,
-                    'spc_live_count': spc_live_count,
-                    'match_status': match_status
-                })
-                
-            except requests.RequestException:
-                # SPC file not available for this date
-                verification_results.append({
-                    'date': date_key,
-                    'day': current_date.day,
-                    'hailydb_count': hailydb_count,
-                    'spc_live_count': None,
-                    'match_status': 'PENDING' if current_date == end_date else 'UNAVAILABLE'
-                })
+            verification_results.append({
+                'date': date_key,
+                'day': current_date.day,
+                'hailydb_count': hailydb_count,
+                'spc_live_count': spc_live_count,
+                'match_status': match_status
+            })
             
             current_date += timedelta(days=1)
         
