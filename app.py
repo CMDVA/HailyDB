@@ -1102,7 +1102,7 @@ def spc_calendar_verification():
             url = f"https://www.spc.noaa.gov/climo/reports/{date_str}_rpts_filtered.csv"
             
             try:
-                response = requests.get(url, timeout=5)  # Reduced timeout
+                response = requests.get(url, timeout=3)  # Shorter timeout for calendar
                 response.raise_for_status()
                 
                 # Count total data rows (subtract 3 for headers)
