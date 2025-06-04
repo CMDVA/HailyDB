@@ -369,15 +369,17 @@ class SPCIngestService:
                     logger.error(f"Error storing report: {e}")
                     continue
             
-            # Commit each batch separately
+            # Flush batch to database but don't commit yet for reimports
             try:
                 if batch_count > 0:
                     self.db.flush()
-                    self.db.commit()
+                    if not is_reimport:
+                        # Only commit immediately for regular operations
+                        self.db.commit()
                     logger.info(f"Batch {i//batch_size + 1}: stored {batch_count} reports")
             except Exception as e:
                 self.db.rollback()
-                logger.error(f"Error committing batch {i//batch_size + 1}: {e}")
+                logger.error(f"Error processing batch {i//batch_size + 1}: {e}")
                 continue
         
         logger.info(f"Successfully stored {sum(counts.values())} total reports for {report_date}")
