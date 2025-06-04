@@ -235,17 +235,12 @@ class SPCCalendar {
     async reimportDate(date) {
         if (this.isLoading) return;
         
-        // Convert date format from YYYY-MM-DD to YYMMDD
-        const dateObj = new Date(date);
-        const dateStr = dateObj.getFullYear().toString().slice(2) + 
-                       String(dateObj.getMonth() + 1).padStart(2, '0') + 
-                       String(dateObj.getDate()).padStart(2, '0');
-        
         // Update badge to processing state
         this.updateBadgeStatus(date, 'processing');
         
         try {
-            const response = await fetch(`/internal/spc-reupload/${dateStr}`, {
+            // Use date in YYYY-MM-DD format as expected by the endpoint
+            const response = await fetch(`/internal/spc-reupload/${date}`, {
                 method: 'POST'
             });
             
@@ -259,7 +254,7 @@ class SPCCalendar {
                 // Wait a moment then refresh the specific date
                 setTimeout(() => this.refreshDateStatus(date), 2000);
             } else {
-                throw new Error(result.error || 'Reimport failed');
+                throw new Error(result.message || 'Reimport failed');
             }
         } catch (error) {
             console.error('Error reimporting date:', error);
