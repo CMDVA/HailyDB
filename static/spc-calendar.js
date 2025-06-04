@@ -168,6 +168,7 @@ class SPCCalendar {
             // Only include dates that match the current month being rendered
             if (itemYear === targetYear && itemMonth === targetMonth) {
                 dataByDay[itemDay] = item;
+                if (itemDay === 1) console.log(`FIXED: Added day 1 to dataByDay[${itemDay}]`, item);
             }
         });
         
