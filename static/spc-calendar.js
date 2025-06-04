@@ -160,9 +160,17 @@ class SPCCalendar {
             const month = parseInt(dateParts[1]);
             const day = parseInt(dateParts[2]);
             
+            // Debug logging for first days of months
+            if (day === 1) {
+                console.log(`Processing ${item.date}: year=${year}, month=${month}, day=${day}, monthDate=${monthDate.getFullYear()}-${monthDate.getMonth() + 1}, hailydb=${item.hailydb_count}, spc=${item.spc_live_count}`);
+            }
+            
             // Only include dates that match the current month being rendered
             if (year === monthDate.getFullYear() && month === monthDate.getMonth() + 1) {
                 dataByDay[day] = item;
+                if (day === 1) {
+                    console.log(`Added to dataByDay[${day}]:`, item);
+                }
             }
         });
         
