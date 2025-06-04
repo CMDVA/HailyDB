@@ -319,10 +319,10 @@ class SPCIngestService:
             logger.error(f"Error parsing report line {line_num}: {e}")
             return None
     
-    def _store_reports(self, reports: List[Dict], report_date: date) -> Dict[str, int]:
+    def _store_reports(self, reports: List[Dict], report_date: date, is_reimport: bool = False) -> Dict[str, int]:
         """Store parsed reports in database with batch processing to avoid timeouts"""
         counts = {'tornado': 0, 'wind': 0, 'hail': 0}
-        processed_keys = set()
+        processed_keys = set() if not is_reimport else None  # Skip duplicate tracking for reimports
         batch_size = 50  # Process in smaller batches
         
         # Process reports in batches to avoid timeout with large datasets
@@ -332,19 +332,18 @@ class SPCIngestService:
             
             for report_data in batch:
                 try:
-                    # Create unique key for duplicate detection
-                    unique_key = (
-                        report_data['report_date'],
-                        report_data['report_type'],
-                        report_data['raw_csv_line']
-                    )
-                    
-                    # Skip if already processed in this session
-                    if unique_key in processed_keys:
-                        continue
-                    
-                    # Skip duplicate checks during reimport for performance
-                    # The deletion should have cleared existing data
+                    # Only check duplicates for regular ingestion, not reimports
+                    if not is_reimport and processed_keys is not None:
+                        # Create unique key for duplicate detection
+                        unique_key = (
+                            report_data['report_date'],
+                            report_data['report_type'],
+                            report_data['raw_csv_line']
+                        )
+                        
+                        # Skip if already processed in this session
+                        if unique_key in processed_keys:
+                            continue
                     
                     # Create SPCReport object
                     report = SPCReport(
@@ -362,7 +361,11 @@ class SPCIngestService:
                     )
                     
                     self.db.add(report)
-                    processed_keys.add(unique_key)
+                    
+                    # Only track processed keys for regular ingestion
+                    if not is_reimport and processed_keys is not None:
+                        processed_keys.add(unique_key)
+                    
                     counts[report_data['report_type']] += 1
                     batch_count += 1
                     
@@ -413,3 +416,83 @@ class SPCIngestService:
                 for log in recent_logs
             ]
         }
+
+    def reimport_spc_reports(self, report_date: date) -> Dict:
+        """
+        Reimport SPC reports for a specific date (bypass duplicate detection)
+        Used by the reimport endpoint to ensure complete data replacement
+        """
+        # Create ingestion log
+        log = SPCIngestionLog()
+        log.report_date = report_date
+        log.started_at = datetime.utcnow()
+        self.db.add(log)
+        self.db.flush()
+        
+        try:
+            url = f"{self.base_url}{self.format_date_for_url(report_date)}_rpts_filtered.csv"
+            log.url_attempted = url
+            
+            logger.info(f"Reimporting SPC reports from {url}")
+            
+            # Download CSV with proper headers
+            headers = {
+                'User-Agent': 'HailyDB-SPC-Ingestion/2.0 (contact@hailydb.com)',
+                'Accept': 'text/csv,text/plain,*/*',
+                'Accept-Encoding': 'identity',
+                'Connection': 'keep-alive'
+            }
+            response = requests.get(url, headers=headers, timeout=Config.REQUEST_TIMEOUT)
+            response.raise_for_status()
+            
+            # Sanitize CSV content
+            clean_content = response.text.replace('\x00', '')
+            
+            # Parse CSV content
+            result = self._parse_spc_csv(clean_content, report_date)
+            
+            if result['total_reports'] == 0:
+                log.success = True
+                log.completed_at = datetime.utcnow()
+                log.total_reports = 0
+                self.db.commit()
+                return {
+                    'status': 'no_data_in_csv',
+                    'message': f'No reports found in CSV for {report_date}'
+                }
+            
+            # Store reports with reimport flag to bypass duplicate detection
+            stored_counts = self._store_reports(result['reports'], report_date, is_reimport=True)
+            
+            # Update log
+            log.success = True
+            log.completed_at = datetime.utcnow()
+            log.tornado_reports = stored_counts['tornado']
+            log.wind_reports = stored_counts['wind'] 
+            log.hail_reports = stored_counts['hail']
+            log.total_reports = sum(stored_counts.values())
+            
+            self.db.commit()
+            
+            logger.info(f"Successfully reimported {log.total_reports} SPC reports for {report_date}")
+            
+            return {
+                'status': 'success',
+                'reports_ingested': log.total_reports,
+                'tornado': log.tornado_reports,
+                'wind': log.wind_reports,
+                'hail': log.hail_reports
+            }
+            
+        except Exception as e:
+            self.db.rollback()
+            logger.error(f"Error reimporting SPC reports for {report_date}: {e}")
+            
+            log.error_message = str(e)
+            log.completed_at = datetime.utcnow()
+            self.db.commit()
+            
+            return {
+                'status': 'error',
+                'error': str(e)
+            }

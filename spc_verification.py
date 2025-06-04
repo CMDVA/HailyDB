@@ -177,9 +177,9 @@ class SPCVerificationService:
             self.db.commit()
             logger.info(f"Deleted {deleted_count} existing SPC reports for {check_date}")
             
-            # Now re-ingest the data with same session
+            # Now re-ingest the data using reimport method to bypass duplicate detection
             spc_ingester = SPCIngestService(self.db)
-            result = spc_ingester.poll_spc_reports(check_date)
+            result = spc_ingester.reimport_spc_reports(check_date)
             
             return {
                 'success': True,
