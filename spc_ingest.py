@@ -361,81 +361,86 @@ class SPCIngestService:
     
     def _parse_report_line(self, line: str, section_type: str, headers: List[str], 
                           report_date: date, line_num: int) -> Optional[Dict]:
-        """Parse a single report line with aggressive SPC CSV error recovery"""
+        """Bulletproof SPC CSV parser with comprehensive error recovery"""
         try:
-            # Strip whitespace and skip empty lines
             line = line.strip()
             if not line:
                 return None
             
-            # SPC CSV structure: Time,Magnitude,Location,County,State,Lat,Lon,Comments
-            # The Comments field often contains unquoted commas, breaking standard CSV parsing
+            # COMPREHENSIVE SPC CSV PARSING STRATEGY
+            # SPC CSV has multiple malformation patterns that must be handled systematically
             
-            # Split by comma to get all parts
-            parts = [p.strip() for p in line.split(',')]
+            # Step 1: Handle the most common pattern - unquoted commas in comments field
+            # Strategy: Find first 7 comma positions, everything after is comments
+            comma_positions = []
+            for i, char in enumerate(line):
+                if char == ',':
+                    comma_positions.append(i)
+                if len(comma_positions) >= 7:
+                    break
             
-            if len(parts) < 7:  # Minimum viable SPC record
-                logger.warning(f"Insufficient data at line {line_num}: {len(parts)} parts - {line[:100]}")
-                return None
-            
-            # Aggressive parsing: Always assume first 7 fields are structured data
-            # Time, Magnitude, Location, County, State, Lat, Lon
-            # Everything after position 6 becomes Comments (joined with commas)
-            
-            values = []
-            values.append(parts[0])  # Time
-            values.append(parts[1])  # Magnitude (F_Scale/Speed/Size)
-            values.append(parts[2])  # Location
-            values.append(parts[3])  # County
-            values.append(parts[4])  # State
-            values.append(parts[5])  # Lat
-            values.append(parts[6])  # Lon
-            
-            # Join everything from position 7 onward as Comments
-            if len(parts) > 7:
-                comments = ','.join(parts[7:])
-                values.append(comments)
-            else:
-                values.append('')  # Empty comments
-            
-            # Handle the common extra state field malformation
-            # Pattern: Time,Mag,Location,ExtraState,County,State,Lat,Lon,Comments
-            if len(parts) >= 9:
-                # Check if we have an extra state field by examining state codes
-                potential_extra_state = parts[3]
-                county = parts[4]
-                state = parts[5]
+            # Extract fields based on comma positions
+            if len(comma_positions) >= 6:  # Need at least 6 commas for 7 fields + comments
+                values = []
+                start = 0
                 
-                # If parts[3] looks like a state code (2 chars) and parts[4] doesn't look like coordinates
-                if (len(potential_extra_state) == 2 and potential_extra_state.isalpha() and 
-                    not county.replace('.', '').replace('-', '').replace('+', '').isdigit()):
-                    
-                    # Merge location with extra state
-                    location_merged = f"{parts[2]} {parts[3]}"
-                    values = [
-                        parts[0],  # Time
-                        parts[1],  # Magnitude
-                        location_merged,  # Location + ExtraState
-                        parts[4],  # County
-                        parts[5],  # State
-                        parts[6],  # Lat
-                        parts[7],  # Lon
-                        ','.join(parts[8:]) if len(parts) > 8 else ''  # Comments
-                    ]
-                    logger.debug(f"Fixed extra state field at line {line_num}: {potential_extra_state}")
+                # Extract first 7 fields
+                for pos in comma_positions[:6]:
+                    values.append(line[start:pos].strip())
+                    start = pos + 1
+                
+                # Extract 7th field (before 7th comma if it exists)
+                if len(comma_positions) >= 7:
+                    values.append(line[start:comma_positions[6]].strip())
+                    # Everything after 7th comma is comments
+                    values.append(line[comma_positions[6]+1:].strip())
+                else:
+                    # No 7th comma - rest is the 7th field, empty comments
+                    values.append(line[start:].strip())
+                    values.append('')
+            else:
+                # Fallback for lines with insufficient commas
+                parts = line.split(',')
+                if len(parts) < 7:
+                    logger.warning(f"Insufficient fields at line {line_num}: {len(parts)} < 7")
+                    return None
+                
+                values = parts[:7]
+                if len(parts) > 7:
+                    values.append(','.join(parts[7:]))
+                else:
+                    values.append('')
             
-            # Ensure we have exactly the right number of fields
+            # Step 2: Handle extra state field malformation
+            # Pattern: Time,Mag,Location,ExtraState,County,State,Lat,Lon,Comments
+            # Detect by checking if field 3 is a 2-letter state code
+            if (len(values) >= 8 and len(line.split(',')) >= 9 and 
+                len(values[3]) == 2 and values[3].isalpha() and values[3].isupper()):
+                
+                # Merge location with extra state
+                parts = line.split(',')
+                values = [
+                    parts[0].strip(),  # Time
+                    parts[1].strip(),  # Magnitude
+                    f"{parts[2]} {parts[3]}".strip(),  # Location + ExtraState
+                    parts[4].strip(),  # County
+                    parts[5].strip(),  # State
+                    parts[6].strip(),  # Lat
+                    parts[7].strip(),  # Lon
+                    ','.join(parts[8:]).strip() if len(parts) > 8 else ''  # Comments
+                ]
+                logger.debug(f"Merged extra state field at line {line_num}")
+            
+            # Step 3: Validate and normalize
+            values = [str(v).strip() for v in values]
+            
+            # Ensure exactly the right number of fields
             while len(values) < len(headers):
                 values.append('')
+            values = values[:len(headers)]
             
-            if len(values) > len(headers):
-                # Too many fields - truncate to expected count
-                logger.debug(f"Truncated excess fields at line {line_num}: {len(values)} -> {len(headers)}")
-                values = values[:len(headers)]
-            
-            # Final safety check
             if len(values) != len(headers):
-                logger.error(f"Critical parsing failure at line {line_num}: {len(values)} vs {len(headers)} - {line[:100]}")
+                logger.error(f"Field count mismatch at line {line_num}: {len(values)} vs {len(headers)}")
                 return None
             
             # Create column mapping
