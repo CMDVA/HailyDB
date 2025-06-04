@@ -105,16 +105,22 @@ class SPCCalendar {
         const groupedData = this.groupDataByMonth(this.currentData);
         const months = Object.keys(groupedData).sort();
         
-        // Render up to 2 months (current implementation)
+        // Show the two most recent months (prioritize current month)
         const month1Container = document.getElementById('calendar-month-1');
         const month2Container = document.getElementById('calendar-month-2');
         
-        if (months.length >= 1 && month1Container) {
-            month1Container.innerHTML = this.renderMonth(months[0], groupedData[months[0]]);
+        // Reverse order to show most recent months first (current month in right column)
+        const recentMonths = months.slice(-2);
+        
+        if (recentMonths.length >= 1 && month1Container) {
+            // Left column: previous month (or earliest if only one month)
+            const leftMonthIndex = recentMonths.length === 2 ? 0 : 0;
+            month1Container.innerHTML = this.renderMonth(recentMonths[leftMonthIndex], groupedData[recentMonths[leftMonthIndex]]);
         }
         
-        if (months.length >= 2 && month2Container) {
-            month2Container.innerHTML = this.renderMonth(months[1], groupedData[months[1]]);
+        if (recentMonths.length >= 2 && month2Container) {
+            // Right column: current/most recent month
+            month2Container.innerHTML = this.renderMonth(recentMonths[1], groupedData[recentMonths[1]]);
         } else if (month2Container) {
             month2Container.innerHTML = '';
         }
@@ -190,9 +196,8 @@ class SPCCalendar {
                 
                 if (dayData) {
                     html += this.renderDayBadge(dayData);
-                    if (dayData.hailydb_count > 0) {
-                        html += `<div class="calendar-day-count">${dayData.hailydb_count}</div>`;
-                    }
+                    // Always show count for consistency (both match and mismatch days)
+                    html += `<div class="calendar-day-count">${dayData.hailydb_count}</div>`;
                 }
                 
                 html += '</div>';
