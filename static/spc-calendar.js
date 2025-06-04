@@ -42,7 +42,7 @@ class SPCCalendar {
         this.showLoading();
         
         try {
-            const response = await fetch(`/api/spc/calendar-verification?offset=${this.currentOffset}`);
+            const response = await fetch(`/internal/spc-calendar-verification?offset=${this.currentOffset}`);
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
@@ -313,7 +313,7 @@ class SPCCalendar {
     async refreshDateStatus(date) {
         // Refresh just this specific date's data
         try {
-            const response = await fetch(`/api/spc/calendar-verification?offset=${this.currentOffset}`);
+            const response = await fetch(`/internal/spc-calendar-verification?offset=${this.currentOffset}`);
             if (!response.ok) return;
             
             const data = await response.json();
