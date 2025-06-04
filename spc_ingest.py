@@ -332,7 +332,7 @@ class SPCIngestService:
             
             for report_data in batch:
                 try:
-                    # Only check duplicates for regular ingestion, not reimports
+                    # Check duplicates only for regular operations, not for direct SPC ingestion or reimports
                     if not is_reimport and processed_keys is not None:
                         # Create unique key for duplicate detection
                         unique_key = (
@@ -341,7 +341,7 @@ class SPCIngestService:
                             report_data['raw_csv_line']
                         )
                         
-                        # Skip if already processed in this session
+                        # Skip if already processed in this session (for regular operations only)
                         if unique_key in processed_keys:
                             continue
                     
@@ -362,7 +362,7 @@ class SPCIngestService:
                     
                     self.db.add(report)
                     
-                    # Only track processed keys for regular ingestion
+                    # Only track processed keys for regular operations
                     if not is_reimport and processed_keys is not None:
                         processed_keys.add(unique_key)
                     
