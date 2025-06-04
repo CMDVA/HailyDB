@@ -114,10 +114,24 @@
                                 {% if report.magnitude %}
                                     {% if report.report_type == 'tornado' and report.magnitude.f_scale is defined %}
                                         F{{ report.magnitude.f_scale }}
-                                    {% elif report.report_type == 'wind' and report.magnitude.speed is defined %}
-                                        {{ report.magnitude.speed }} mph
-                                    {% elif report.report_type == 'hail' and report.magnitude.size is defined %}
-                                        {{ report.magnitude.size }}"
+                                    {% elif report.report_type == 'wind' %}
+                                        {% if report.magnitude.speed_text is defined %}
+                                            {{ report.magnitude.speed_text }}
+                                        {% elif report.magnitude.speed is defined and report.magnitude.speed %}
+                                            {{ report.magnitude.speed }} mph
+                                        {% else %}
+                                            Unknown
+                                        {% endif %}
+                                    {% elif report.report_type == 'hail' %}
+                                        {% if report.magnitude.size_text is defined %}
+                                            {{ report.magnitude.size_text }}
+                                        {% elif report.magnitude.size_inches is defined and report.magnitude.size_inches %}
+                                            {{ "%.2f"|format(report.magnitude.size_inches) }}"
+                                        {% elif report.magnitude.size_hundredths is defined and report.magnitude.size_hundredths %}
+                                            {{ "%.2f"|format(report.magnitude.size_hundredths / 100.0) }}"
+                                        {% else %}
+                                            Unknown
+                                        {% endif %}
                                     {% else %}
                                         N/A
                                     {% endif %}
