@@ -1,13 +1,13 @@
 /**
  * SPC Reports Calendar Interface
- * Manages 60-day verification calendar with real-time updates
+ * Manages 2-month verification calendar with real-time updates
  */
 
 class SPCCalendar {
     constructor() {
         this.currentData = [];
         this.isLoading = false;
-        this.currentOffset = 0; // 0 = current 60 days, -1 = previous 60 days, etc.
+        this.currentOffset = 0; // 0 = current 2 months, -1 = previous 2 months, etc.
         this.monthNames = [
             'January', 'February', 'March', 'April', 'May', 'June',
             'July', 'August', 'September', 'October', 'November', 'December'
@@ -359,13 +359,13 @@ class SPCCalendar {
     }
     
     navigatePrevious() {
-        // Go back 60 days (more negative offset)
+        // Go back 2 months (more negative offset)
         this.currentOffset -= 1;
         this.loadCalendarData();
     }
     
     navigateNext() {
-        // Go forward 60 days (less negative offset, but not past current date)
+        // Go forward 2 months (less negative offset, but not past current date)
         if (this.currentOffset < 0) {
             this.currentOffset += 1;
             this.loadCalendarData();

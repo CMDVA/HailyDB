@@ -1060,21 +1060,44 @@ def spc_verify_today():
 
 @app.route('/api/spc/calendar-verification')
 def spc_calendar_verification():
-    """Get 60-day SPC verification data for calendar view"""
+    """Get 2-month SPC verification data for calendar view"""
     try:
         from datetime import date, timedelta
+        import calendar
         import requests
         
-        # Get offset parameter for navigation (0 = current 60 days, -1 = previous 60 days, etc.)
+        # Get offset parameter for navigation (0 = current period, -1 = previous 2 months, etc.)
         offset = int(request.args.get('offset', 0))
         
-        # Calculate date range based on offset for historical data display
-        # offset = 0: March/April 2025 (60 days ending April 30, 2025)
-        # offset = -1: Previous 60 days before that
-        # offset = 1: Next 60 days after that
-        base_end_date = date(2025, 4, 30)  # Fixed end date for March/April display
-        end_date = base_end_date + timedelta(days=offset * 60)
-        start_date = end_date - timedelta(days=60)  # 61 days total: March 1st to April 30th
+        # Calculate date range based on offset for 2-month periods
+        # offset = 0: Current and previous month
+        # offset = -1: Previous 2 months before that
+        # offset = 1: Next 2 months after that
+        today = date.today()
+        
+        # Calculate the target month/year based on offset
+        target_year = today.year
+        target_month = today.month + (offset * 2)
+        
+        # Normalize year and month
+        while target_month > 12:
+            target_month -= 12
+            target_year += 1
+        while target_month < 1:
+            target_month += 12
+            target_year -= 1
+        
+        # End date is the last day of the target month
+        _, last_day = calendar.monthrange(target_year, target_month)
+        end_date = date(target_year, target_month, last_day)
+        
+        # Start date is the first day of the previous month
+        prev_month = target_month - 1
+        prev_year = target_year
+        if prev_month < 1:
+            prev_month = 12
+            prev_year -= 1
+        start_date = date(prev_year, prev_month, 1)
         
         verification_results = []
         current_date = start_date
@@ -1099,8 +1122,12 @@ def spc_calendar_verification():
         
         # Create session with connection pooling
         session = requests.Session()
-        adapter = requests.adapters.HTTPAdapter(pool_connections=10, pool_maxsize=20)
-        session.mount('https://', adapter)
+        try:
+            from requests.adapters import HTTPAdapter
+            adapter = HTTPAdapter(pool_connections=10, pool_maxsize=20)
+            session.mount('https://', adapter)
+        except ImportError:
+            pass  # Fall back to default session
         
         def fetch_spc_count(date_obj):
             """Fetch SPC count for a single date"""
