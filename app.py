@@ -1074,7 +1074,7 @@ def spc_calendar_verification():
         # offset = 1: Next 60 days after that
         base_end_date = date(2025, 4, 30)  # Fixed end date for March/April display
         end_date = base_end_date + timedelta(days=offset * 60)
-        start_date = end_date - timedelta(days=60)  # 61 days total to include March 1st
+        start_date = end_date - timedelta(days=60)  # 61 days total: March 1st to April 30th
         
         verification_results = []
         current_date = start_date
