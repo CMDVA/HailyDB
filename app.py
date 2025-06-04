@@ -1068,10 +1068,11 @@ def spc_calendar_verification():
         # Get offset parameter for navigation (0 = current 60 days, -1 = previous 60 days, etc.)
         offset = int(request.args.get('offset', 0))
         
-        # Calculate date range based on offset
-        # offset = 0: current 60 days (today - 59 days ago)
-        # offset = -1: previous 60 days (60 days ago - 119 days ago)
-        base_end_date = date.today()
+        # Calculate date range based on offset for historical data display
+        # offset = 0: March/April 2025 (60 days ending April 30, 2025)
+        # offset = -1: Previous 60 days before that
+        # offset = 1: Next 60 days after that
+        base_end_date = date(2025, 4, 30)  # Fixed end date for March/April display
         end_date = base_end_date + timedelta(days=offset * 60)
         start_date = end_date - timedelta(days=59)  # 60 days total
         
