@@ -1093,31 +1093,68 @@ def spc_calendar_verification():
                 all_reports[date_key] = 0
             all_reports[date_key] += 1
         
+        # Pre-fetch all SPC data with connection pooling for better performance
+        import concurrent.futures
+        import threading
+        
+        # Create session with connection pooling
+        session = requests.Session()
+        adapter = requests.adapters.HTTPAdapter(pool_connections=10, pool_maxsize=20)
+        session.mount('https://', adapter)
+        
+        def fetch_spc_count(date_obj):
+            """Fetch SPC count for a single date"""
+            try:
+                date_str = date_obj.strftime("%y%m%d")
+                url = f"https://www.spc.noaa.gov/climo/reports/{date_str}_rpts_filtered.csv"
+                response = session.get(url, timeout=5)
+                response.raise_for_status()
+                
+                lines = response.text.strip().split('\n')
+                return max(0, len(lines) - 3)  # Subtract 3 header lines
+            except:
+                return None
+        
+        # Generate all dates first
+        all_dates = []
+        current_date = start_date
         while current_date <= end_date:
-            date_key = current_date.strftime('%Y-%m-%d')
-            hailydb_count = all_reports.get(date_key, 0)
+            all_dates.append(current_date)
+            current_date += timedelta(days=1)
+        
+        # Fetch SPC data in parallel with limited workers to prevent overwhelming
+        spc_counts = {}
+        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+            future_to_date = {executor.submit(fetch_spc_count, date): date for date in all_dates}
             
-            # Use database-only approach for calendar performance
-            # Determine status based on data presence and date recency
-            if hailydb_count > 0:
+            for future in concurrent.futures.as_completed(future_to_date, timeout=30):
+                date = future_to_date[future]
+                try:
+                    count = future.result()
+                    spc_counts[date] = count
+                except:
+                    spc_counts[date] = None
+        
+        # Build results using fetched data
+        for date in all_dates:
+            date_key = date.strftime('%Y-%m-%d')
+            hailydb_count = all_reports.get(date_key, 0)
+            spc_live_count = spc_counts.get(date)
+            
+            if spc_live_count is None:
+                match_status = 'PENDING' if date >= end_date - timedelta(days=1) else 'UNAVAILABLE'
+            elif hailydb_count == spc_live_count:
                 match_status = 'MATCH'
-                spc_live_count = hailydb_count  # Assume database matches SPC
-            elif current_date >= end_date - timedelta(days=2):
-                match_status = 'PENDING'  # Recent dates may still be pending
-                spc_live_count = None
             else:
-                match_status = 'UNAVAILABLE'  # Historical dates with no data
-                spc_live_count = None
+                match_status = 'MISMATCH'
             
             verification_results.append({
                 'date': date_key,
-                'day': current_date.day,
+                'day': date.day,
                 'hailydb_count': hailydb_count,
                 'spc_live_count': spc_live_count,
                 'match_status': match_status
             })
-            
-            current_date += timedelta(days=1)
         
         return jsonify({
             'status': 'success',
