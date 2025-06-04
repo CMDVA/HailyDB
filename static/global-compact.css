@@ -1,27 +1,27 @@
 /* HailyDB Global Compact Design System */
 
-/* Base typography - 10px paragraph text, proportional headings max 20px */
-body { 
+/* Base typography - 10px paragraph text, minimum 16px headers */
+body, p, div, span, td, th, li { 
     font-size: 10px !important; 
     line-height: 1.4 !important; 
 }
 
-/* Proportional heading hierarchy */
+/* Header hierarchy - minimum 16px for primary text */
 .h1, h1 { font-size: 20px !important; margin-bottom: 0.5rem !important; }
-.h2, h2 { font-size: 18px !important; margin-bottom: 0.5rem !important; }
-.h3, h3 { font-size: 16px !important; margin-bottom: 0.5rem !important; }
-.h4, h4 { font-size: 14px !important; margin-bottom: 0.5rem !important; }
-.h5, h5 { font-size: 12px !important; margin-bottom: 0.5rem !important; }
-.h6, h6 { font-size: 11px !important; margin-bottom: 0.5rem !important; }
+.h2, h2 { font-size: 19px !important; margin-bottom: 0.5rem !important; }
+.h3, h3 { font-size: 18px !important; margin-bottom: 0.5rem !important; }
+.h4, h4 { font-size: 17px !important; margin-bottom: 0.5rem !important; }
+.h5, h5 { font-size: 16px !important; margin-bottom: 0.5rem !important; }
+.h6, h6 { font-size: 16px !important; margin-bottom: 0.5rem !important; }
 
 /* Bootstrap component overrides */
-.btn { font-size: 9px !important; padding: 0.25rem 0.5rem !important; }
-.btn-sm { font-size: 8px !important; padding: 0.15rem 0.3rem !important; }
-.form-control, .form-select { font-size: 9px !important; padding: 0.25rem 0.5rem !important; }
+.btn { font-size: 10px !important; padding: 0.25rem 0.5rem !important; }
+.btn-sm { font-size: 10px !important; padding: 0.15rem 0.3rem !important; }
+.form-control, .form-select { font-size: 10px !important; padding: 0.25rem 0.5rem !important; }
 .card { margin-bottom: 0.75rem !important; }
 .card-body { padding: 0.75rem !important; }
-.card-title { font-size: 14px !important; }
-.card-header h6 { font-size: 12px !important; }
+.card-title { font-size: 16px !important; }
+.card-header h6 { font-size: 16px !important; }
 
 /* Table compact styling */
 .table { font-size: 10px !important; }
@@ -33,11 +33,14 @@ body {
     padding: 0.2rem 0.3rem !important; 
 }
 
-/* Bootstrap utility overrides */
-.text-xs { font-size: 8px !important; }
-.text-sm { font-size: 9px !important; }
-.small { font-size: 9px !important; }
+/* Bootstrap utility overrides - force normal text to 10px */
+.text-xs { font-size: 10px !important; }
+.text-sm { font-size: 10px !important; }
+.small { font-size: 10px !important; }
 .fa-2x { font-size: 1.2em !important; }
+
+/* Override Bootstrap's font-weight-bold classes */
+.font-weight-bold, .fw-bold { font-size: 10px !important; }
 
 /* Navigation and alerts */
 .navbar-brand { font-size: 16px !important; }
