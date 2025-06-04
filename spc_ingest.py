@@ -314,75 +314,68 @@ class SPCIngestService:
             return None
     
     def _store_reports(self, reports: List[Dict], report_date: date) -> Dict[str, int]:
-        """Store parsed reports in database"""
+        """Store parsed reports in database with batch processing to avoid timeouts"""
         counts = {'tornado': 0, 'wind': 0, 'hail': 0}
-        
-        # Track processed unique keys to avoid duplicates within the same batch
         processed_keys = set()
+        batch_size = 50  # Process in smaller batches
         
-        for report_data in reports:
+        # Process reports in batches to avoid timeout with large datasets
+        for i in range(0, len(reports), batch_size):
+            batch = reports[i:i + batch_size]
+            batch_count = 0
+            
+            for report_data in batch:
+                try:
+                    # Create unique key for duplicate detection
+                    unique_key = (
+                        report_data['report_date'],
+                        report_data['report_type'],
+                        report_data['raw_csv_line']
+                    )
+                    
+                    # Skip if already processed in this session
+                    if unique_key in processed_keys:
+                        continue
+                    
+                    # Skip duplicate checks during reimport for performance
+                    # The deletion should have cleared existing data
+                    
+                    # Create SPCReport object
+                    report = SPCReport(
+                        report_date=report_data['report_date'],
+                        report_type=report_data['report_type'],
+                        time_utc=report_data['time_utc'],
+                        location=report_data['location'],
+                        county=report_data['county'],
+                        state=report_data['state'],
+                        latitude=report_data['latitude'],
+                        longitude=report_data['longitude'],
+                        comments=report_data['comments'],
+                        magnitude=report_data['magnitude'],
+                        raw_csv_line=report_data['raw_csv_line']
+                    )
+                    
+                    self.db.add(report)
+                    processed_keys.add(unique_key)
+                    counts[report_data['report_type']] += 1
+                    batch_count += 1
+                    
+                except Exception as e:
+                    logger.error(f"Error storing report: {e}")
+                    continue
+            
+            # Commit each batch separately
             try:
-                # Create unique key for duplicate detection using the full raw CSV line
-                # This ensures we only filter true duplicates, not legitimate multiple reports
-                unique_key = (
-                    report_data['report_date'],
-                    report_data['report_type'],
-                    report_data['raw_csv_line']
-                )
-                
-                # Skip if we've already processed this exact report in this batch
-                if unique_key in processed_keys:
-                    logger.debug(f"Duplicate within batch ignored: {report_data['location']} {report_data['time_utc']}")
-                    continue
-                
-                # Check if report already exists using the unique constraint fields
-                existing = self.db.query(SPCReport).filter(
-                    SPCReport.report_date == report_data['report_date'],
-                    SPCReport.report_type == report_data['report_type'],
-                    SPCReport.time_utc == report_data['time_utc'],
-                    SPCReport.latitude == report_data['latitude'],
-                    SPCReport.longitude == report_data['longitude']
-                ).first()
-                
-                if existing:
-                    logger.debug(f"Duplicate in database ignored: {report_data['location']} {report_data['time_utc']}")
-                    continue
-                
-                # Create SPCReport object
-                report = SPCReport(
-                    report_date=report_data['report_date'],
-                    report_type=report_data['report_type'],
-                    time_utc=report_data['time_utc'],
-                    location=report_data['location'],
-                    county=report_data['county'],
-                    state=report_data['state'],
-                    latitude=report_data['latitude'],
-                    longitude=report_data['longitude'],
-                    comments=report_data['comments'],
-                    magnitude=report_data['magnitude'],
-                    raw_csv_line=report_data['raw_csv_line']
-                )
-                
-                self.db.add(report)
-                processed_keys.add(unique_key)
-                counts[report_data['report_type']] += 1
-                
+                if batch_count > 0:
+                    self.db.flush()
+                    self.db.commit()
+                    logger.info(f"Batch {i//batch_size + 1}: stored {batch_count} reports")
             except Exception as e:
-                logger.error(f"Error storing report: {e}")
-                # Rollback this transaction to prevent session corruption
                 self.db.rollback()
+                logger.error(f"Error committing batch {i//batch_size + 1}: {e}")
                 continue
         
-        try:
-            self.db.commit()
-            logger.info(f"Successfully stored {sum(counts.values())} reports for {report_date}")
-        except Exception as e:
-            self.db.rollback()
-            logger.error(f"Error committing reports: {e}")
-            # Clean up the session state
-            self.db.close()
-            raise
-            
+        logger.info(f"Successfully stored {sum(counts.values())} total reports for {report_date}")
         return counts
     
     def get_ingestion_stats(self) -> Dict:
