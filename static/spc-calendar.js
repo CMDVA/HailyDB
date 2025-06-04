@@ -168,7 +168,6 @@ class SPCCalendar {
             // Only include dates that match the current month being rendered
             if (itemYear === targetYear && itemMonth === targetMonth) {
                 dataByDay[itemDay] = item;
-                if (monthKey === '2025-03') console.log(`March data: day ${itemDay}`, item);
             }
         });
         
