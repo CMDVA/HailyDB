@@ -885,12 +885,13 @@ async function loadNextWeek() {
 
 // Get badge color for severity
 function getSeverityColor(severity) {
+    // Return custom severity classes for green-to-orange-to-red scale
     switch (severity?.toLowerCase()) {
-        case 'extreme': return 'danger';
-        case 'severe': return 'warning';
-        case 'moderate': return 'info';
-        case 'minor': return 'secondary';
-        default: return 'light';
+        case 'extreme': return 'severity-extreme';
+        case 'severe': return 'severity-severe';
+        case 'moderate': return 'severity-moderate';
+        case 'minor': return 'severity-minor';
+        default: return 'severity-unknown';
     }
 }
 
