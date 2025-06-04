@@ -229,6 +229,7 @@ class SPCCalendar {
         let badgeText = hailydb_count.toString();
         let clickHandler = '';
         
+        // Map backend status to frontend classes
         switch (match_status) {
             case 'MATCH':
                 badgeClass += ' match';
@@ -240,9 +241,18 @@ class SPCCalendar {
             case 'PROCESSING':
                 badgeClass += ' processing';
                 break;
-            default:
+            case 'PENDING':
                 badgeClass += ' unavailable';
                 badgeText = '0';
+                break;
+            case 'UNAVAILABLE':
+                badgeClass += ' unavailable';
+                badgeText = '0';
+                break;
+            default:
+                // Handle any unexpected status by showing as unavailable
+                badgeClass += ' unavailable';
+                badgeText = hailydb_count ? hailydb_count.toString() : '0';
         }
         
         return `<div class="${badgeClass}" ${clickHandler} title="${match_status}: ${hailydb_count} HailyDB, ${spc_live_count || 'N/A'} SPC Live">${badgeText}</div>`;
@@ -296,7 +306,7 @@ class SPCCalendar {
     async refreshDateStatus(date) {
         // Refresh just this specific date's data
         try {
-            const response = await fetch('/api/spc/calendar-verification');
+            const response = await fetch(`/api/spc/calendar-verification?offset=${this.currentOffset}`);
             if (!response.ok) return;
             
             const data = await response.json();
@@ -313,6 +323,8 @@ class SPCCalendar {
             }
         } catch (error) {
             console.error('Error refreshing date status:', error);
+            // Fallback: reload entire calendar
+            this.loadCalendarData();
         }
     }
     
