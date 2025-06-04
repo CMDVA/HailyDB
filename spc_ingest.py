@@ -704,75 +704,66 @@ class SPCIngestService:
             batch = reports[i:i + batch_size]
             batch_count = 0
             
+            # Individual record processing moved to commit section below
+            
+            # Process each record individually to avoid batch failure on duplicates
+            successful_in_batch = 0
             for report_data in batch:
                 try:
-                    # Check duplicates only for regular operations, not for direct SPC ingestion or reimports
-                    if not is_reimport and processed_keys is not None:
-                        # Use raw CSV line as unique key - this is the complete row content
-                        raw_line = report_data['raw_csv_line']
-                        
-                        # Skip if this exact raw CSV line was already processed in this session
-                        if raw_line in processed_keys:
-                            continue
+                    # Ensure magnitude is proper dict, not stringified JSON
+                    magnitude_data = report_data['magnitude']
+                    if isinstance(magnitude_data, str):
+                        import json
+                        try:
+                            magnitude_data = json.loads(magnitude_data)
+                        except (json.JSONDecodeError, TypeError):
+                            magnitude_data = {}
                     
-                    # Create SPCReport object with proper JSON handling
-                    try:
-                        # Ensure magnitude is proper dict, not stringified JSON
-                        magnitude_data = report_data['magnitude']
-                        if isinstance(magnitude_data, str):
-                            import json
-                            try:
-                                magnitude_data = json.loads(magnitude_data)
-                            except (json.JSONDecodeError, TypeError):
-                                magnitude_data = {}
-                        
-                        report = SPCReport(
-                            report_date=report_data['report_date'],
-                            report_type=report_data['report_type'],
-                            time_utc=report_data['time_utc'],
-                            location=report_data['location'],
-                            county=report_data['county'],
-                            state=report_data['state'],
-                            latitude=report_data['latitude'],
-                            longitude=report_data['longitude'],
-                            comments=report_data['comments'],
-                            magnitude=magnitude_data,
-                            raw_csv_line=report_data['raw_csv_line']
-                        )
-                        
-                        self.db.add(report)
-                        
-                    except Exception as insert_error:
-                        logger.error(f"Failed to insert report at line {report_data.get('raw_csv_line', 'unknown')[:100]}: {insert_error}")
-                        # Skip this report and continue with the next one
-                        continue
+                    report = SPCReport(
+                        report_date=report_data['report_date'],
+                        report_type=report_data['report_type'],
+                        time_utc=report_data['time_utc'],
+                        location=report_data['location'],
+                        county=report_data['county'],
+                        state=report_data['state'],
+                        latitude=report_data['latitude'],
+                        longitude=report_data['longitude'],
+                        comments=report_data['comments'],
+                        magnitude=magnitude_data,
+                        raw_csv_line=report_data['raw_csv_line']
+                    )
                     
-                    # Only track processed keys for regular operations
-                    if not is_reimport and processed_keys is not None:
-                        processed_keys.add(raw_line)
-                    
+                    self.db.add(report)
+                    self.db.flush()  # Check for constraint violations immediately
+                    successful_in_batch += 1
                     counts[report_data['report_type']] += 1
-                    batch_count += 1
                     
+                except IntegrityError as ie:
+                    # Handle duplicate records individually - don't fail entire batch
+                    self.db.rollback()
+                    if 'uq_spc_report_csv_unique' in str(ie):
+                        logger.debug(f"Skipping duplicate record: {report_data['raw_csv_line'][:50]}...")
+                    else:
+                        logger.error(f"Integrity error for record: {ie}")
                 except Exception as e:
-                    logger.error(f"Error storing report: {e}")
+                    self.db.rollback()
+                    logger.error(f"Failed to insert individual record: {e}")
                     continue
             
-            # Flush batch to database but don't commit yet for reimports
+            # Commit successful records in batch
             try:
-                if batch_count > 0:
-                    self.db.flush()
-                    if not is_reimport:
-                        # Only commit immediately for regular operations
-                        self.db.commit()
-                    logger.info(f"Batch {i//batch_size + 1}: stored {batch_count} reports")
+                if successful_in_batch > 0 and not is_reimport:
+                    self.db.commit()
+                    logger.info(f"Batch {i//batch_size + 1}: stored {successful_in_batch}/{len(batch)} reports")
+                elif successful_in_batch > 0:
+                    logger.info(f"Batch {i//batch_size + 1}: processed {successful_in_batch}/{len(batch)} reports (reimport)")
             except Exception as e:
                 self.db.rollback()
-                logger.error(f"Error processing batch {i//batch_size + 1}: {e}")
-                # Reset counts for failed batch
-                for report_data in batch:
-                    if report_data['report_type'] in counts:
-                        counts[report_data['report_type']] = max(0, counts[report_data['report_type']] - 1)
+                logger.error(f"Error committing batch {i//batch_size + 1}: {e}")
+                # Reset counts for failed commit
+                for _ in range(successful_in_batch):
+                    for report_type in counts:
+                        counts[report_type] = max(0, counts[report_type] - 1)
                 continue
         
         logger.info(f"Successfully stored {sum(counts.values())} total reports for {report_date}")
