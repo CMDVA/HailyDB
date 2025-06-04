@@ -170,9 +170,10 @@ class SPCCalendar {
         });
         
         // Calendar days
+        let currentDate = new Date(startDate);
         for (let week = 0; week < 6; week++) {
             for (let day = 0; day < 7; day++) {
-                const currentDate = new Date(startDate);
+                currentDate = new Date(startDate);
                 currentDate.setDate(startDate.getDate() + (week * 7) + day);
                 
                 const dayNum = currentDate.getDate();
