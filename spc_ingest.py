@@ -250,39 +250,57 @@ class SPCIngestService:
     
     def _parse_report_line(self, line: str, section_type: str, headers: List[str], 
                           report_date: date, line_num: int) -> Optional[Dict]:
-        """Parse a single report line based on section type"""
+        """Parse a single report line based on section type with robust SPC CSV handling"""
         try:
-            # SPC CSV has malformed data - Comments field often has unquoted commas
-            # We need to parse manually by splitting on commas but preserving the last field
+            # Strip whitespace and skip empty lines
+            line = line.strip()
+            if not line:
+                return None
+            
+            # SPC CSV structure: Time,Magnitude,Location,County,State,Lat,Lon,Comments
+            # The Comments field is the last field and often contains unquoted commas
+            # We need to parse by taking the first 7 fields and joining the rest as Comments
+            
             parts = line.split(',')
             
             if len(parts) < len(headers):
-                logger.warning(f"Too few columns at line {line_num}: expected {len(headers)}, got {len(parts)}")
+                logger.warning(f"Too few columns at line {line_num}: expected {len(headers)}, got {len(parts)} - {line[:100]}")
                 return None
             
-            # For malformed CSV with extra commas in Comments (last field)
-            if len(parts) > len(headers):
-                # Take first N-1 fields normally, then join remaining parts as Comments
-                values = parts[:len(headers)-1]
-                # Join all remaining parts as the Comments field
-                comments_parts = parts[len(headers)-1:]
-                values.append(','.join(comments_parts))
-                logger.debug(f"Fixed CSV line {line_num} with {len(parts)} parts into {len(values)} fields")
+            # Extract the structured fields (first 7 fields for SPC format)
+            # Time, Magnitude, Location, County, State, Lat, Lon, Comments
+            if len(parts) >= len(headers):
+                values = []
+                
+                # Take first 7 fields as-is
+                for i in range(len(headers) - 1):
+                    values.append(parts[i].strip())
+                
+                # Join remaining parts as the Comments field (last field)
+                if len(parts) > len(headers) - 1:
+                    comments_parts = parts[len(headers)-1:]
+                    comments = ','.join(comments_parts).strip()
+                    values.append(comments)
+                    logger.debug(f"Reconstructed line {line_num}: {len(parts)} parts -> {len(values)} fields")
+                else:
+                    # No comments field
+                    values.append('')
             else:
                 values = parts
             
-            # Handle extra state field issue (from previous fix)
+            # Handle specific SPC malformations
             if len(values) == len(headers) + 1:
-                # Common case: extra state field - merge location and first extra field
-                if len(values) >= 5:
-                    # Merge location with what appears to be an extra state field
-                    values[2] = f"{values[2]} {values[3]}"  # Merge location and extra field
+                # Common case: extra state field between Location and County
+                # Format often: Time,Mag,Location,ExtraState,County,State,Lat,Lon,Comments
+                if len(values) >= 6:
+                    # Merge location field with the extra state
+                    values[2] = f"{values[2]} {values[3]}"  # Merge location with extra field
                     values = values[:3] + values[4:]  # Remove the extra field
-                    logger.info(f"Fixed malformed line {line_num} by merging location fields")
+                    logger.info(f"Fixed extra state field at line {line_num}")
             
             # Final validation
             if len(values) != len(headers):
-                logger.warning(f"Column count still mismatched at line {line_num}: expected {len(headers)}, got {len(values)}")
+                logger.warning(f"Could not parse line {line_num}: expected {len(headers)}, got {len(values)} - {line[:100]}")
                 return None
             
             # Create column mapping
