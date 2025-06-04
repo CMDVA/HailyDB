@@ -1208,8 +1208,8 @@ def spc_matches_data():
             if match.spc_reports:
                 for report in match.spc_reports:
                     spc_reports.append({
-                        'report_type': report.get('type', 'unknown'),
-                        'time_utc': report.get('time', ''),
+                        'report_type': report.get('report_type', 'unknown'),
+                        'time_utc': report.get('time_utc', ''),
                         'location': report.get('location', ''),
                         'county': report.get('county', ''),
                         'state': report.get('state', ''),
@@ -1224,7 +1224,8 @@ def spc_matches_data():
                 'match_method': match.spc_match_method or 'unknown',
                 'confidence': match.spc_confidence_score or 0,
                 'report_count': match.spc_report_count or 0,
-                'spc_reports': spc_reports
+                'spc_reports': spc_reports,
+                'spc_ai_summary': match.spc_ai_summary
             })
         
         return jsonify({
