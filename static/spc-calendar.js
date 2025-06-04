@@ -333,13 +333,13 @@ class SPCCalendar {
     }
     
     navigatePrevious() {
-        // Go back 60 days
+        // Go back 60 days (more negative offset)
         this.currentOffset -= 1;
         this.loadCalendarData();
     }
     
     navigateNext() {
-        // Go forward 60 days (but not past current date)
+        // Go forward 60 days (less negative offset, but not past current date)
         if (this.currentOffset < 0) {
             this.currentOffset += 1;
             this.loadCalendarData();
