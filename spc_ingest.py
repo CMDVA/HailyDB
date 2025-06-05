@@ -31,23 +31,35 @@ class SPCIngestService:
         
     def get_polling_schedule(self, report_date: date) -> int:
         """
-        Determine polling interval based on date
+        Systematic polling schedule with data protection
         Returns interval in minutes
         """
         today = date.today()
         days_ago = (today - report_date).days
         
         if days_ago == 0:
-            return 5  # Every 5 minutes for today
-        elif days_ago <= 3:
-            return 180  # Every 3 hours for recent (today-3)
+            return 5  # Every 5 minutes for today (T-0)
+        elif 1 <= days_ago <= 4:
+            return 60  # Hourly updates for T-1 through T-4
+        elif 5 <= days_ago <= 7:
+            return 180  # Every 3 hours for T-5 through T-7
+        elif 8 <= days_ago <= 15:
+            return 1440  # Daily updates for T-8 through T-15
         else:
-            return 1440  # Daily (24 hours) for historical
+            return None  # Data protected at T-16+, no automatic polling
     
     def should_poll_now(self, report_date: date) -> bool:
         """
-        Check if we should poll for this date based on schedule
+        Check if we should poll for this date based on systematic schedule
+        Includes data protection for T-16+ dates
         """
+        # Check if date is in protected range (T-16+)
+        today = date.today()
+        days_ago = (today - report_date).days
+        
+        if days_ago >= 16:
+            return False  # Data protected, no automatic polling
+        
         # Get last successful ingestion
         last_log = SPCIngestionLog.query.filter(
             SPCIngestionLog.report_date == report_date,
@@ -58,9 +70,44 @@ class SPCIngestService:
             return True  # Never polled before
             
         interval_minutes = self.get_polling_schedule(report_date)
+        if interval_minutes is None:
+            return False  # No polling schedule defined
+            
         time_since_last = datetime.utcnow() - last_log.completed_at
         
         return time_since_last.total_seconds() >= (interval_minutes * 60)
+    
+    def is_backfill_candidate(self, report_date: date) -> bool:
+        """
+        Check if date needs backfill processing (overrides T-16 protection)
+        Returns True for dates with no data or failed ingestions
+        """
+        # Check if we have any successful ingestion for this date
+        successful_log = SPCIngestionLog.query.filter(
+            SPCIngestionLog.report_date == report_date,
+            SPCIngestionLog.success == True
+        ).first()
+        
+        if not successful_log:
+            return True  # No successful ingestion ever
+        
+        # Check if we have actual SPC reports for this date
+        report_count = SPCReport.query.filter(
+            SPCReport.report_date == report_date
+        ).count()
+        
+        if report_count == 0:
+            return True  # No reports despite successful log (empty day)
+        
+        return False  # Has data, not a backfill candidate
+    
+    def force_poll_for_backfill(self, report_date: date, reason: str = "manual_backfill") -> Dict:
+        """
+        Force polling for backfill processing (bypasses all scheduling rules)
+        Used for missing data recovery and manual corrections
+        """
+        logger.info(f"Force polling {report_date} for backfill: {reason}")
+        return self.poll_spc_reports(report_date)
     
     def format_date_for_url(self, report_date: date) -> str:
         """Convert date to YYMMDD format for SPC URL"""

@@ -66,8 +66,21 @@ This tornado at 00:10 UTC is:
 - **Date Assignment**: Follows SPC meteorological day convention
 - **User Experience**: Florida user (UTC-4) sees meteorologically correct storm dates
 
-### Ingestion Schedule Optimization
-- **Today**: 5-minute polling for current SPC day
-- **Recent (Last 3 days)**: 3-hour polling 
-- **Historical**: Daily polling
-- **Target Coverage**: Today-4 ensures 3+ days available at wake-up
+### Systematic Polling Schedule
+
+**Implemented Schedule**:
+- **T-0 (Today)**: Every 5 minutes - Real-time current day updates
+- **T-1 through T-4**: Hourly updates on the hour - Recent critical period  
+- **T-5 through T-7**: Every 3 hours - Recent historical period
+- **T-8 through T-15**: Daily updates - Stabilizing historical period
+- **T-16+**: Data protected - No automatic polling (backfill only)
+
+**Florida User Optimization**:
+- Morning wake-up guaranteed fresh T-1 through T-4 data
+- Hourly updates ensure data completeness for critical recent period
+- Systematic coverage eliminates polling gaps
+
+**Data Protection**:
+- T-16+ dates protected from automatic updates
+- Backfill processing available for missing data recovery
+- Manual override capability for data corrections

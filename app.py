@@ -753,21 +753,38 @@ def spc_reupload(date_str):
 
 @app.route('/internal/spc-ingest', methods=['POST'])
 def spc_ingest():
-    """Trigger SPC report ingestion"""
+    """Trigger systematic SPC report ingestion (T-0 through T-15)"""
     try:
         log_entry = scheduler_service.log_operation_start("spc_poll", "manual")
         
-        # Poll for last 7 days
         from datetime import datetime, timedelta
-        total_reports = 0
-        end_date = datetime.utcnow().date()
-        start_date = end_date - timedelta(days=6)
+        today = datetime.utcnow().date()
         
-        current_date = start_date
-        while current_date <= end_date:
-            result = spc_ingest_service.poll_spc_reports(current_date)
-            total_reports += result.get('total_reports', 0)
-            current_date += timedelta(days=1)
+        total_reports = 0
+        results = []
+        
+        # Systematic polling for T-0 through T-15
+        for days_back in range(16):
+            target_date = today - timedelta(days=days_back)
+            
+            # Check if this date should be polled based on systematic schedule
+            if spc_ingest_service.should_poll_now(target_date):
+                try:
+                    result = spc_ingest_service.poll_spc_reports(target_date)
+                    if result.get('status') != 'skipped':
+                        total_reports += result.get('total_reports', 0)
+                        results.append({
+                            'date': target_date.isoformat(),
+                            'reports': result.get('total_reports', 0),
+                            'status': result.get('status', 'completed')
+                        })
+                except Exception as e:
+                    results.append({
+                        'date': target_date.isoformat(),
+                        'reports': 0,
+                        'status': 'error',
+                        'error': str(e)
+                    })
         
         scheduler_service.log_operation_complete(
             log_entry, True, total_reports, total_reports
@@ -776,7 +793,9 @@ def spc_ingest():
         return jsonify({
             'success': True,
             'total_reports': total_reports,
-            'message': f'SPC ingestion completed: {total_reports} reports processed'
+            'dates_polled': len(results),
+            'results': results,
+            'message': f'Systematic SPC ingestion completed: {total_reports} reports processed across {len(results)} dates'
         })
         
     except Exception as e:

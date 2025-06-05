@@ -189,14 +189,22 @@ class AutonomousScheduler:
                 "spc_poll", "internal_timer"
             )
             
-            # Poll for today and yesterday
+            # Systematic polling for T-0 through T-15
             today = datetime.utcnow().date()
-            yesterday = today - timedelta(days=1)
             
             total_reports = 0
-            for date in [today, yesterday]:
-                result = self.spc_service.poll_spc_reports(date)
-                total_reports += result.get('total_reports', 0)
+            for days_back in range(16):  # T-0 through T-15
+                target_date = today - timedelta(days=days_back)
+                
+                # Check if this date should be polled based on systematic schedule
+                if self.spc_service.should_poll_now(target_date):
+                    try:
+                        result = self.spc_service.poll_spc_reports(target_date)
+                        if result.get('status') != 'skipped':
+                            total_reports += result.get('total_reports', 0)
+                    except Exception as e:
+                        logger.warning(f"Failed to poll {target_date}: {e}")
+                        continue
             
             self.scheduler_service.log_operation_complete(
                 log_entry, True, total_reports, total_reports
