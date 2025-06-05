@@ -243,30 +243,39 @@ class SPCCalendar {
         let badgeText = hailydb_count.toString();
         let clickHandler = '';
         
+        // Enable reimport for all non-MATCH statuses (fallback strategy)
+        // This allows users to fix data discrepancies regardless of detected status
+        if (match_status !== 'MATCH') {
+            clickHandler = `onclick="spcCalendar.reimportDate('${date}')"`;
+        }
+        
         // Map backend status to frontend classes
         switch (match_status) {
             case 'MATCH':
                 badgeClass += ' match';
+                // For MATCH status, no click handler - data is correct
+                badgeText = hailydb_count.toString();
                 break;
             case 'MISMATCH':
                 badgeClass += ' mismatch';
-                clickHandler = `onclick="spcCalendar.reimportDate('${date}')"`;
+                badgeText = hailydb_count.toString();
                 break;
             case 'PROCESSING':
                 badgeClass += ' processing';
+                badgeText = hailydb_count.toString();
                 break;
             case 'PENDING':
                 badgeClass += ' unavailable';
-                badgeText = '0';
+                badgeText = hailydb_count.toString();
                 break;
             case 'UNAVAILABLE':
                 badgeClass += ' unavailable';
-                badgeText = '0';
+                badgeText = hailydb_count.toString();
                 break;
             default:
                 // Handle any unexpected status by showing as unavailable
                 badgeClass += ' unavailable';
-                badgeText = hailydb_count ? hailydb_count.toString() : '0';
+                badgeText = hailydb_count.toString();
         }
         
         return `<div class="${badgeClass}" ${clickHandler} title="${match_status}: ${hailydb_count} HailyDB, ${spc_live_count || 'N/A'} SPC Live">${badgeText}</div>`;
