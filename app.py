@@ -806,6 +806,76 @@ def spc_ingest():
             )
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/internal/spc-backfill', methods=['POST'])
+def spc_backfill():
+    """Force backfill processing for missing data (overrides T-16 protection)"""
+    try:
+        data = request.get_json() or {}
+        start_date_str = data.get('start_date')
+        end_date_str = data.get('end_date')
+        
+        if not start_date_str or not end_date_str:
+            return jsonify({'success': False, 'message': 'start_date and end_date required'}), 400
+        
+        try:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+        except ValueError:
+            return jsonify({'success': False, 'message': 'Invalid date format (use YYYY-MM-DD)'}), 400
+        
+        if start_date > end_date:
+            return jsonify({'success': False, 'message': 'start_date must be before end_date'}), 400
+        
+        log_entry = scheduler_service.log_operation_start("spc_backfill", "manual")
+        
+        total_reports = 0
+        results = []
+        current_date = start_date
+        
+        while current_date <= end_date:
+            try:
+                # Force poll for backfill (bypasses all scheduling rules)
+                result = spc_ingest_service.force_poll_for_backfill(
+                    current_date, f"backfill_{start_date_str}_to_{end_date_str}"
+                )
+                
+                total_reports += result.get('total_reports', 0)
+                results.append({
+                    'date': current_date.isoformat(),
+                    'reports': result.get('total_reports', 0),
+                    'status': result.get('status', 'completed')
+                })
+                
+            except Exception as e:
+                results.append({
+                    'date': current_date.isoformat(),
+                    'reports': 0,
+                    'status': 'error',
+                    'error': str(e)
+                })
+            
+            current_date += timedelta(days=1)
+        
+        scheduler_service.log_operation_complete(
+            log_entry, True, total_reports, total_reports
+        )
+        
+        return jsonify({
+            'success': True,
+            'total_reports': total_reports,
+            'dates_processed': len(results),
+            'results': results,
+            'message': f'Backfill completed: {total_reports} reports processed across {len(results)} dates'
+        })
+        
+    except Exception as e:
+        logger.error(f"SPC backfill failed: {e}")
+        if 'log_entry' in locals():
+            scheduler_service.log_operation_complete(
+                log_entry, False, 0, 0, str(e)
+            )
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/internal/spc-match', methods=['POST'])
 def spc_match():
     """Trigger SPC matching process"""
