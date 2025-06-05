@@ -9,17 +9,17 @@
     },
     "db_counts": {
       "tornado": 74,
-      "wind": 146,
+      "wind": 152,
       "hail": 21,
-      "total": 241
+      "total": 247
     },
     "discrepancies": {
       "tornado": 0,
-      "wind": 6,
+      "wind": 0,
       "hail": 0,
-      "total": 6
+      "total": 0
     },
-    "status": "DATA_LOSS"
+    "status": "CLEAN"
   },
   {
     "date": "2024-05-17",
