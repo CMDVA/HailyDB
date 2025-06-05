@@ -750,8 +750,8 @@ class SPCIngestService:
                     # Individual rollback only affects this record
                     self.db.rollback()
                     duplicates_skipped += 1
-                    if 'uq_spc_report_csv_unique' in str(ie):
-                        logger.debug(f"Duplicate skipped: {report_data['raw_csv_line'][:50]}...")
+                    if 'uq_spc_report_hash' in str(ie) or 'duplicate key value violates unique constraint' in str(ie):
+                        logger.debug(f"Duplicate skipped (hash): {report_data['row_hash'][:16]}...")
                     else:
                         logger.warning(f"Constraint violation: {ie}")
                         
@@ -867,7 +867,14 @@ class SPCIngestService:
                     'message': f'No reports found in CSV for {report_date}'
                 }
             
-            # Store reports with reimport flag to bypass duplicate detection
+            # For reimport, delete existing records for this date first
+            existing_count = self.db.query(SPCReport).filter(SPCReport.report_date == report_date).count()
+            if existing_count > 0:
+                logger.info(f"Removing {existing_count} existing records for {report_date}")
+                self.db.query(SPCReport).filter(SPCReport.report_date == report_date).delete()
+                self.db.commit()
+            
+            # Store reports with reimport flag
             stored_counts = self._store_reports(result['reports'], report_date, is_reimport=True)
             
             # Update log
