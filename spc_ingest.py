@@ -759,12 +759,13 @@ class SPCIngestService:
                     counts[report_data['report_type']] += 1
                     
                 except IntegrityError as ie:
-                    # For reimport, skip constraint violations and continue
+                    # Handle constraint violations differently for reimport vs normal ingestion
                     self.db.rollback()
                     if is_reimport:
-                        logger.debug(f"Reimport - skipping constraint violation: {report_data['row_hash'][:16]}...")
-                        successful_in_batch += 1
-                        counts[report_data['report_type']] += 1
+                        # For reimport, ignore constraint violations completely
+                        logger.debug(f"Reimport - ignoring constraint: {report_data['row_hash'][:16]}...")
+                        # Don't count as successful, but continue processing
+                        continue
                     else:
                         duplicates_skipped += 1
                         if 'uq_spc_report_hash' in str(ie) or 'duplicate key value violates unique constraint' in str(ie):
