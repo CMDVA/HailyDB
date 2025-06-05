@@ -718,19 +718,18 @@ class SPCIngestService:
                             magnitude_data = {}
                     
                     # Create SPCReport object
-                    report = SPCReport(
-                        report_date=report_data['report_date'],
-                        report_type=report_data['report_type'],
-                        time_utc=report_data['time_utc'],
-                        location=report_data['location'],
-                        county=report_data['county'],
-                        state=report_data['state'],
-                        latitude=report_data['latitude'],
-                        longitude=report_data['longitude'],
-                        comments=report_data['comments'],
-                        magnitude=magnitude_data,
-                        raw_csv_line=report_data['raw_csv_line']
-                    )
+                    report = SPCReport()
+                    report.report_date = report_data['report_date']
+                    report.report_type = report_data['report_type']
+                    report.time_utc = report_data['time_utc']
+                    report.location = report_data['location']
+                    report.county = report_data['county']
+                    report.state = report_data['state']
+                    report.latitude = report_data['latitude']
+                    report.longitude = report_data['longitude']
+                    report.comments = report_data['comments']
+                    report.magnitude = magnitude_data
+                    report.raw_csv_line = report_data['raw_csv_line']
                     
                     # Add and flush individual record
                     self.db.add(report)
