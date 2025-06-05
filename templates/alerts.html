@@ -206,6 +206,28 @@
     </div>
 </div>
 
+<!-- Progress Indicator -->
+<div id="enrichmentProgress" class="alert alert-info" style="display: none;">
+    <div class="d-flex align-items-center">
+        <div class="spinner-border spinner-border-sm me-3" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <div class="flex-grow-1">
+            <strong id="progressTitle">Processing Alerts...</strong>
+            <div class="mt-2">
+                <div class="progress" style="height: 20px;">
+                    <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                         role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                        <span id="progressText">0%</span>
+                    </div>
+                </div>
+            </div>
+            <small id="progressDetails" class="text-muted">Starting enrichment process...</small>
+        </div>
+        <button type="button" class="btn-close" onclick="hideProgress()"></button>
+    </div>
+</div>
+
 <!-- Alerts List -->
 <div class="row">
     <div class="col-12">
@@ -419,6 +441,27 @@ async function enrichBatch(limit = 50) {
     }
 }
 
+// Progress indicator functions
+function showProgress(title, percentage, details) {
+    document.getElementById('progressTitle').textContent = title;
+    document.getElementById('progressBar').style.width = percentage + '%';
+    document.getElementById('progressBar').setAttribute('aria-valuenow', percentage);
+    document.getElementById('progressText').textContent = Math.round(percentage) + '%';
+    document.getElementById('progressDetails').textContent = details;
+    document.getElementById('enrichmentProgress').style.display = 'block';
+}
+
+function updateProgress(percentage, details) {
+    document.getElementById('progressBar').style.width = percentage + '%';
+    document.getElementById('progressBar').setAttribute('aria-valuenow', percentage);
+    document.getElementById('progressText').textContent = Math.round(percentage) + '%';
+    document.getElementById('progressDetails').textContent = details;
+}
+
+function hideProgress() {
+    document.getElementById('enrichmentProgress').style.display = 'none';
+}
+
 // Enrich priority alerts
 async function enrichPriorityAlerts() {
     try {
@@ -426,27 +469,48 @@ async function enrichPriorityAlerts() {
         const statsResponse = await fetch('/api/alerts/enrichment-stats');
         const stats = await statsResponse.json();
         
+        let totalToProcess = 5; // Default estimate
         if (statsResponse.ok && stats.priority_alerts_total > 0) {
             const unenriched = stats.priority_alerts_total - stats.priority_alerts_enriched;
-            showNotification(`Starting priority alert enrichment for ${unenriched} alerts...`, 'info', 10000);
+            totalToProcess = Math.min(unenriched, 5); // Limited to 5 per batch
+            showProgress('Starting Priority Alert Enrichment', 0, `Preparing to process ${totalToProcess} priority alerts...`);
         } else {
-            showNotification('Starting priority alert enrichment...', 'info', 10000);
+            showProgress('Starting Priority Alert Enrichment', 0, 'Checking for priority alerts to process...');
         }
+        
+        // Simulate progress during the request
+        let progressInterval = setInterval(() => {
+            const currentWidth = parseInt(document.getElementById('progressBar').style.width) || 0;
+            if (currentWidth < 90) {
+                updateProgress(currentWidth + 10, 'Processing alerts with AI enrichment...');
+            }
+        }, 2000);
         
         const response = await fetch('/api/alerts/enrich-priority', { 
             method: 'POST',
             headers: { 'Content-Type': 'application/json' }
         });
+        
+        clearInterval(progressInterval);
+        
         const result = await response.json();
         
         if (response.ok) {
+            updateProgress(100, `Completed: ${result.enriched || 0} enriched, ${result.failed || 0} failed`);
+            
             const message = `Priority enrichment completed: ${result.enriched || 0} alerts enriched, ${result.failed || 0} failed`;
             showNotification(message, 'success', 8000);
-            setTimeout(() => refreshAlerts(), 2000);
+            
+            setTimeout(() => {
+                hideProgress();
+                refreshAlerts();
+            }, 3000);
         } else {
+            hideProgress();
             showNotification('Error enriching priority alerts: ' + (result.message || 'Unknown error'), 'error', 10000);
         }
     } catch (error) {
+        hideProgress();
         console.error('Error enriching priority alerts:', error);
         showNotification('Network error during enrichment - check connection and API keys', 'error', 10000);
     }
