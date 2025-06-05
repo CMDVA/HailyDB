@@ -302,9 +302,7 @@
                 <ul class="pagination justify-content-center">
                     {% if alerts.has_prev %}
                     <li class="page-item">
-                        {% set prev_args = request.args.copy() %}
-                        {% set _ = prev_args.update({'page': alerts.prev_num}) %}
-                        <a class="page-link" href="{{ url_for('get_alerts', **prev_args) }}">
+                        <a class="page-link" href="{{ url_for('get_alerts', page=alerts.prev_num, severity=request.args.get('severity'), event=request.args.get('event'), per_page=request.args.get('per_page')) }}">
                             <i class="fas fa-chevron-left"></i>
                         </a>
                     </li>
@@ -314,9 +312,7 @@
                         {% if page_num %}
                             {% if page_num != alerts.page %}
                             <li class="page-item">
-                                {% set page_args = request.args.copy() %}
-                                {% set _ = page_args.update({'page': page_num}) %}
-                                <a class="page-link" href="{{ url_for('get_alerts', **page_args) }}">
+                                <a class="page-link" href="{{ url_for('get_alerts', page=page_num, severity=request.args.get('severity'), event=request.args.get('event'), per_page=request.args.get('per_page')) }}">
                                     {{ page_num }}
                                 </a>
                             </li>
@@ -334,9 +330,7 @@
                     
                     {% if alerts.has_next %}
                     <li class="page-item">
-                        {% set next_args = request.args.copy() %}
-                        {% set _ = next_args.update({'page': alerts.next_num}) %}
-                        <a class="page-link" href="{{ url_for('get_alerts', **next_args) }}">
+                        <a class="page-link" href="{{ url_for('get_alerts', page=alerts.next_num, severity=request.args.get('severity'), event=request.args.get('event'), per_page=request.args.get('per_page')) }}">
                             <i class="fas fa-chevron-right"></i>
                         </a>
                     </li>
