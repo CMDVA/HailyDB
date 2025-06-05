@@ -754,7 +754,8 @@ class SPCIngestService:
                     self.db.rollback()
                     errors_count += 1
                     logger.error(f"Failed to insert record: {e}")
-                    logger.debug(f"Failed record data: {report_data['raw_csv_line'][:100]}")
+                    logger.error(f"Failed record data: {report_data['raw_csv_line']}")
+                    logger.error(f"Report data: {report_data}")
                     continue
             
             # Commit successful records in batch
