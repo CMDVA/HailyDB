@@ -111,50 +111,59 @@ class EnrichmentService:
             return False
     
     def _generate_summary(self, alert: Alert) -> Optional[str]:
-        """Generate AI summary from alert description"""
-        try:
-            description = alert.properties.get('description', '')
-            if not description:
-                return None
-            
-            # Enhanced prompt with specific instructions for better summaries
-            prompt = f"""
-            Summarize this weather alert in 2-3 clear sentences that focus on:
-            1. What hazard is happening (wind speeds, hail size, tornado threat, etc.)
-            2. Where it's affecting (specific counties/cities)
-            3. When it's valid until and movement direction if applicable
-            
-            Keep the language accessible and actionable for the public.
-            
-            Alert Type: {alert.event}
-            Severity: {alert.severity}
-            Areas Affected: {alert.area_desc}
-            Alert Details: {description[:1200]}
-            """
-            
-            # the newest OpenAI model is "gpt-4o" which was released May 13, 2024.
-            # do not change this unless explicitly requested by the user
-            response = self.openai_client.chat.completions.create(
-                model="gpt-4o",
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "You are a professional meteorologist creating public safety summaries. Write clear, actionable weather alert summaries that help people understand immediate risks and protective actions. Focus on specific hazards, locations, and timing. Avoid jargon and keep language accessible to the general public."
-                    },
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
-                ],
-                max_tokens=250,
-                temperature=0.2
-            )
-            
-            return response.choices[0].message.content.strip()
-            
-        except Exception as e:
-            logger.error(f"Error generating summary for alert {alert.id}: {e}")
+        """Generate AI summary from alert description with retry logic"""
+        import time
+        
+        description = alert.properties.get('description', '')
+        if not description:
             return None
+        
+        # Enhanced prompt with specific instructions for better summaries
+        prompt = f"""
+        Summarize this weather alert in 2-3 clear sentences that focus on:
+        1. What hazard is happening (wind speeds, hail size, tornado threat, etc.)
+        2. Where it's affecting (specific counties/cities)
+        3. When it's valid until and movement direction if applicable
+        
+        Keep the language accessible and actionable for the public.
+        
+        Alert Type: {alert.event}
+        Severity: {alert.severity}
+        Areas Affected: {alert.area_desc}
+        Alert Details: {description[:1200]}
+        """
+        
+        # Retry logic for network issues
+        for attempt in range(3):
+            try:
+                # the newest OpenAI model is "gpt-4o" which was released May 13, 2024.
+                # do not change this unless explicitly requested by the user
+                response = self.openai_client.chat.completions.create(
+                    model="gpt-4o",
+                    messages=[
+                        {
+                            "role": "system",
+                            "content": "You are a professional meteorologist creating public safety summaries. Write clear, actionable weather alert summaries that help people understand immediate risks and protective actions. Focus on specific hazards, locations, and timing. Avoid jargon and keep language accessible to the general public."
+                        },
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ],
+                    max_tokens=250,
+                    temperature=0.2,
+                    timeout=30
+                )
+                
+                return response.choices[0].message.content.strip()
+                
+            except Exception as e:
+                logger.warning(f"Attempt {attempt + 1} failed for alert {alert.id}: {e}")
+                if attempt < 2:  # Don't sleep on the last attempt
+                    time.sleep(2 ** attempt)  # Exponential backoff
+                else:
+                    logger.error(f"All retry attempts failed for alert {alert.id}: {e}")
+                    return None
     
     def _classify_tags(self, alert: Alert) -> Optional[List[str]]:
         """Classify alert into standardized tags"""
@@ -329,40 +338,59 @@ class EnrichmentService:
         Enrich all high-priority alerts that haven't been enriched yet
         Includes Severe Weather, Tropical Weather, and High Wind alerts
         """
+        import time
+        
         try:
             # Get all unenriched alerts that match auto-enrich criteria
             alerts = Alert.query.filter(
                 Alert.ai_summary.is_(None),
                 Alert.event.in_(self.AUTO_ENRICH_ALERTS)
-            ).all()
+            ).limit(5).all()  # Process only 5 at a time for stability
             
             total_enriched = 0
             total_failed = 0
             
             logger.info(f"Starting priority alert enrichment: {len(alerts)} alerts to process")
             
-            # Process in batches to prevent timeouts
-            batch_size = 10
-            for i in range(0, len(alerts), batch_size):
-                batch = alerts[i:i + batch_size]
-                
-                for alert in batch:
-                    try:
-                        if self.enrich_alert(alert):
-                            total_enriched += 1
-                        else:
-                            total_failed += 1
-                    except Exception as e:
-                        logger.error(f"Error enriching priority alert {alert.id}: {e}")
-                        total_failed += 1
-                
-                # Commit after each batch
+            if len(alerts) == 0:
+                return {
+                    'enriched': 0,
+                    'failed': 0,
+                    'total_processed': 0,
+                    'message': 'No priority alerts need enrichment'
+                }
+            
+            # Process alerts slowly and safely
+            for i, alert in enumerate(alerts):
                 try:
-                    self.db.session.commit()
-                    logger.info(f"Priority batch {i//batch_size + 1}: {total_enriched} enriched so far")
+                    logger.info(f"Processing alert {i+1}/{len(alerts)}: {alert.id} ({alert.event})")
+                    
+                    if self.enrich_alert(alert):
+                        total_enriched += 1
+                        logger.info(f"Successfully enriched alert {alert.id}")
+                        
+                        # Commit immediately after success
+                        try:
+                            self.db.session.commit()
+                        except Exception as e:
+                            logger.error(f"Error committing alert {alert.id}: {e}")
+                            self.db.session.rollback()
+                            total_failed += 1
+                            total_enriched = max(0, total_enriched - 1)
+                    else:
+                        total_failed += 1
+                        logger.warning(f"Failed to enrich alert {alert.id}")
+                    
+                    # Wait between each alert to prevent overwhelming the API
+                    time.sleep(2)
+                    
                 except Exception as e:
-                    logger.error(f"Error committing priority batch: {e}")
-                    self.db.session.rollback()
+                    logger.error(f"Error enriching priority alert {alert.id}: {e}")
+                    total_failed += 1
+                    try:
+                        self.db.session.rollback()
+                    except:
+                        pass
             
             logger.info(f"Priority alert enrichment complete: {total_enriched} enriched, {total_failed} failed")
             

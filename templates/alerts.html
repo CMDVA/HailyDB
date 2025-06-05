@@ -422,20 +422,33 @@ async function enrichBatch(limit = 50) {
 // Enrich priority alerts
 async function enrichPriorityAlerts() {
     try {
-        showNotification('Starting priority alert enrichment...', 'info');
+        // First get stats to show user how many will be processed
+        const statsResponse = await fetch('/api/alerts/enrichment-stats');
+        const stats = await statsResponse.json();
         
-        const response = await fetch('/api/alerts/enrich-priority', { method: 'POST' });
+        if (statsResponse.ok && stats.priority_alerts_total > 0) {
+            const unenriched = stats.priority_alerts_total - stats.priority_alerts_enriched;
+            showNotification(`Starting priority alert enrichment for ${unenriched} alerts...`, 'info', 10000);
+        } else {
+            showNotification('Starting priority alert enrichment...', 'info', 10000);
+        }
+        
+        const response = await fetch('/api/alerts/enrich-priority', { 
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
         const result = await response.json();
         
         if (response.ok) {
-            showNotification(`Priority enrichment completed: ${result.enriched || 0} alerts enriched`, 'success');
+            const message = `Priority enrichment completed: ${result.enriched || 0} alerts enriched, ${result.failed || 0} failed`;
+            showNotification(message, 'success', 8000);
             setTimeout(() => refreshAlerts(), 2000);
         } else {
-            showNotification('Error enriching priority alerts: ' + (result.message || 'Unknown error'), 'error');
+            showNotification('Error enriching priority alerts: ' + (result.message || 'Unknown error'), 'error', 10000);
         }
     } catch (error) {
         console.error('Error enriching priority alerts:', error);
-        showNotification('Error enriching priority alerts', 'error');
+        showNotification('Network error during enrichment - check connection and API keys', 'error', 10000);
     }
 }
 
