@@ -22,32 +22,33 @@ def parse_hail_line(line, line_num):
     """Parse a single hail report line"""
     try:
         fields = line.strip().split(',')
-        if len(fields) < 8:
+        if len(fields) < 7:
             return None
             
         time_str = fields[0]
-        location = fields[5] if len(fields) > 5 else ""
-        county = fields[6] if len(fields) > 6 else ""
-        state = fields[7] if len(fields) > 7 else ""
+        size = fields[1] if len(fields) > 1 else ""
+        location = fields[2] if len(fields) > 2 else ""
+        county = fields[3] if len(fields) > 3 else ""
+        state = fields[4] if len(fields) > 4 else ""
         
         # Parse coordinates if available
         latitude = None
         longitude = None
-        if len(fields) > 8 and fields[8]:
+        if len(fields) > 5 and fields[5]:
             try:
-                latitude = float(fields[8])
+                latitude = float(fields[5])
             except:
                 pass
-        if len(fields) > 9 and fields[9]:
+        if len(fields) > 6 and fields[6]:
             try:
-                longitude = float(fields[9])
+                longitude = float(fields[6])
             except:
                 pass
         
         # Parse magnitude (hail size)
         magnitude = {}
-        if len(fields) > 10 and fields[10]:
-            magnitude['size'] = fields[10]
+        if size:
+            magnitude['size'] = size
         
         # Generate hash for duplicate detection
         hash_data = f"2024-05-26|hail|{time_str}|{location}|{county}|{state}|{latitude or ''}|{longitude or ''}|{json.dumps(magnitude)}"
@@ -89,8 +90,8 @@ def manual_hail_ingestion():
         if not line.strip():
             continue
             
-        # Look for hail section
-        if 'HAIL' in line.upper() and not hail_section_found:
+        # Look for hail section header (Time,Size,Location...)
+        if line.startswith('Time,Size,Location') and not hail_section_found:
             print(f"Found hail section at line {i+1}")
             hail_section_found = True
             continue
