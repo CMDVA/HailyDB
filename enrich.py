@@ -117,14 +117,19 @@ class EnrichmentService:
             if not description:
                 return None
             
-            # Prepare prompt
+            # Enhanced prompt with specific instructions for better summaries
             prompt = f"""
-            Please provide a concise 2-3 sentence summary of this weather alert.
-            Focus on the key hazards, affected areas, and timing.
+            Summarize this weather alert in 2-3 clear sentences that focus on:
+            1. What hazard is happening (wind speeds, hail size, tornado threat, etc.)
+            2. Where it's affecting (specific counties/cities)
+            3. When it's valid until and movement direction if applicable
             
-            Alert Event: {alert.event}
-            Area: {alert.area_desc}
-            Description: {description[:1000]}
+            Keep the language accessible and actionable for the public.
+            
+            Alert Type: {alert.event}
+            Severity: {alert.severity}
+            Areas Affected: {alert.area_desc}
+            Alert Details: {description[:1200]}
             """
             
             # the newest OpenAI model is "gpt-4o" which was released May 13, 2024.
@@ -134,15 +139,15 @@ class EnrichmentService:
                 messages=[
                     {
                         "role": "system",
-                        "content": "You are a weather expert. Provide clear, concise summaries of weather alerts that help people understand the key risks and actions needed."
+                        "content": "You are a professional meteorologist creating public safety summaries. Write clear, actionable weather alert summaries that help people understand immediate risks and protective actions. Focus on specific hazards, locations, and timing. Avoid jargon and keep language accessible to the general public."
                     },
                     {
                         "role": "user",
                         "content": prompt
                     }
                 ],
-                max_tokens=200,
-                temperature=0.3
+                max_tokens=250,
+                temperature=0.2
             )
             
             return response.choices[0].message.content.strip()

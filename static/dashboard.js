@@ -975,14 +975,18 @@ async function triggerIngestion() {
     }
 }
 
-// Enrich batch
-async function enrichBatch() {
+// Enrich batch with optional limit
+async function enrichBatch(limit = 50) {
     try {
-        const response = await fetch('/internal/enrich-batch', { method: 'POST' });
+        const response = await fetch('/api/alerts/enrich-batch', { 
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ limit: limit })
+        });
         const result = await response.json();
         
         if (response.ok) {
-            showNotification(`Enrichment batch completed: ${result.enriched || 0} alerts enriched`, 'success');
+            showNotification(`Batch enrichment completed: ${result.enriched || 0} alerts enriched`, 'success');
             setTimeout(() => {
                 updateDashboardStatus();
             }, 2000);
@@ -992,6 +996,77 @@ async function enrichBatch() {
     } catch (error) {
         console.error('Error enriching batch:', error);
         showNotification('Error enriching batch', 'error');
+    }
+}
+
+// Enrich priority alerts
+async function enrichPriorityAlerts() {
+    try {
+        showNotification('Starting priority alert enrichment...', 'info');
+        
+        const response = await fetch('/api/alerts/enrich-priority', { method: 'POST' });
+        const result = await response.json();
+        
+        if (response.ok) {
+            showNotification(`Priority enrichment completed: ${result.enriched || 0} alerts enriched`, 'success');
+            setTimeout(() => {
+                updateDashboardStatus();
+            }, 2000);
+        } else {
+            showNotification('Error enriching priority alerts: ' + (result.message || 'Unknown error'), 'error');
+        }
+    } catch (error) {
+        console.error('Error enriching priority alerts:', error);
+        showNotification('Error enriching priority alerts', 'error');
+    }
+}
+
+// Enrich by category
+async function enrichByCategory(category, limit = 100) {
+    try {
+        showNotification(`Starting ${category} enrichment...`, 'info');
+        
+        const response = await fetch('/api/alerts/enrich-by-category', { 
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ category: category, limit: limit })
+        });
+        const result = await response.json();
+        
+        if (response.ok) {
+            showNotification(`${category} enrichment completed: ${result.enriched || 0} alerts enriched`, 'success');
+            setTimeout(() => {
+                updateDashboardStatus();
+            }, 2000);
+        } else {
+            showNotification(`Error enriching ${category}: ` + (result.message || 'Unknown error'), 'error');
+        }
+    } catch (error) {
+        console.error(`Error enriching ${category}:`, error);
+        showNotification(`Error enriching ${category}`, 'error');
+    }
+}
+
+// Get enrichment statistics
+async function getEnrichmentStats() {
+    try {
+        const response = await fetch('/api/alerts/enrichment-stats');
+        const stats = await response.json();
+        
+        if (response.ok) {
+            const message = `Enrichment Stats:
+            • Total Alerts: ${stats.total_alerts || 0}
+            • Enriched: ${stats.enriched_alerts || 0} (${stats.enrichment_rate || 0}%)
+            • Priority Enriched: ${stats.priority_alerts_enriched || 0}/${stats.priority_alerts_total || 0} (${stats.priority_enrichment_rate || 0}%)
+            • Tagged: ${stats.tagged_alerts || 0}`;
+            
+            showNotification(message, 'info', 8000);
+        } else {
+            showNotification('Error getting enrichment stats: ' + (stats.error || 'Unknown error'), 'error');
+        }
+    } catch (error) {
+        console.error('Error getting enrichment stats:', error);
+        showNotification('Error getting enrichment stats', 'error');
     }
 }
 
