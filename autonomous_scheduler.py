@@ -197,8 +197,20 @@ class AutonomousScheduler:
                 target_date = today - timedelta(days=days_back)
                 
                 # Check if this date should be polled based on systematic schedule
+                # Only poll if we don't have recent successful data for this date
                 if self.spc_service.should_poll_now(target_date):
                     try:
+                        # Check if we already have fresh data for this date
+                        from models import SPCReport
+                        existing_count = SPCReport.query.filter(
+                            SPCReport.report_date == target_date
+                        ).count()
+                        
+                        # Skip polling if we already have substantial data for this date
+                        if existing_count > 0 and days_back >= 7:
+                            logger.debug(f"Skipping {target_date}: already has {existing_count} records")
+                            continue
+                        
                         result = self.spc_service.poll_spc_reports(target_date)
                         if result.get('status') != 'skipped':
                             total_reports += result.get('total_reports', 0)
