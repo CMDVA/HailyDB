@@ -51,7 +51,7 @@ class SPCIngestService:
     def should_poll_now(self, report_date: date) -> bool:
         """
         Check if we should poll for this date based on systematic schedule
-        Includes data protection for T-16+ dates
+        Includes data protection for T-16+ dates and existing data checks
         """
         # Check if date is in protected range (T-16+)
         today = date.today()
@@ -60,7 +60,16 @@ class SPCIngestService:
         if days_ago >= 16:
             return False  # Data protected, no automatic polling
         
-        # Get last successful ingestion
+        # Check if we already have substantial data for this date
+        existing_count = SPCReport.query.filter(
+            SPCReport.report_date == report_date
+        ).count()
+        
+        # For dates older than 7 days, skip if we have any data (likely complete)
+        if days_ago >= 7 and existing_count > 0:
+            return False
+            
+        # For recent dates (T-0 to T-6), check polling interval
         last_log = SPCIngestionLog.query.filter(
             SPCIngestionLog.report_date == report_date,
             SPCIngestionLog.success == True
@@ -75,7 +84,10 @@ class SPCIngestService:
             
         time_since_last = datetime.utcnow() - last_log.completed_at
         
-        return time_since_last.total_seconds() >= (interval_minutes * 60)
+        # Only re-poll if interval has passed AND we have minimal data (suggesting incomplete ingestion)
+        interval_passed = time_since_last.total_seconds() >= (interval_minutes * 60)
+        
+        return interval_passed and existing_count < 10  # Avoid re-polling dates with substantial data
     
     def is_backfill_candidate(self, report_date: date) -> bool:
         """
