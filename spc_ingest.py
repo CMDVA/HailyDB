@@ -886,8 +886,9 @@ class SPCIngestService:
                 self.db.query(SPCReport).filter(SPCReport.report_date == report_date).delete()
                 self.db.commit()
             
-            # Store reports with reimport flag
-            stored_counts = self._store_reports(result['reports'], report_date, is_reimport=True)
+            # Temporarily disable row_hash constraint for reimport
+            # Use bulk insert with ON CONFLICT DO NOTHING to handle any remaining duplicates
+            stored_counts = self._bulk_insert_reports(result['reports'], report_date)
             
             # Update log
             log.success = True
@@ -921,3 +922,100 @@ class SPCIngestService:
                 'status': 'error',
                 'error': str(e)
             }
+    
+    def _bulk_insert_reports(self, reports: List[Dict], report_date: date) -> Dict[str, int]:
+        """
+        Bulk insert reports using raw SQL with conflict resolution for reimport
+        Bypasses ORM constraints to ensure successful reimport
+        """
+        from sqlalchemy import text
+        import json
+        
+        tornado_count = wind_count = hail_count = stored_count = 0
+        
+        try:
+            # Process reports in smaller batches to avoid memory issues
+            batch_size = 50
+            for i in range(0, len(reports), batch_size):
+                batch = reports[i:i + batch_size]
+                
+                # Prepare bulk insert values
+                values = []
+                for report in batch:
+                    # Generate hash with improved normalization
+                    lat_str = str(report.get('latitude', '')) if report.get('latitude') is not None else ''
+                    lon_str = str(report.get('longitude', '')) if report.get('longitude') is not None else ''
+                    mag_str = str(report['magnitude']) if report['magnitude'] else '{}'
+                    
+                    hash_data = f"{report['report_date']}|{report['report_type']}|{report['time_utc']}|{report['location']}|{report['county']}|{report['state']}|{lat_str}|{lon_str}|{mag_str}"
+                    clean_hash_data = hash_data.replace('\x00', '').replace('\r', '').replace('\n', ' ')
+                    row_hash = hashlib.sha256(clean_hash_data.encode('utf-8')).hexdigest()
+                    
+                    # Convert magnitude dict to JSON string
+                    magnitude_json = json.dumps(report['magnitude']) if report['magnitude'] else '{}'
+                    
+                    values.append({
+                        'report_date': report['report_date'],
+                        'report_type': report['report_type'],
+                        'time_utc': report['time_utc'],
+                        'location': report['location'],
+                        'county': report['county'],
+                        'state': report['state'],
+                        'latitude': report.get('latitude'),
+                        'longitude': report.get('longitude'),
+                        'magnitude': magnitude_json,
+                        'row_hash': row_hash,
+                        'created_at': datetime.utcnow(),
+                        'updated_at': datetime.utcnow()
+                    })
+                
+                # Execute bulk insert with ON CONFLICT DO NOTHING
+                if values:
+                    sql = text("""
+                        INSERT INTO spc_reports (
+                            report_date, report_type, time_utc, location, county, state,
+                            latitude, longitude, magnitude, row_hash, created_at, updated_at
+                        ) VALUES (
+                            :report_date, :report_type, :time_utc, :location, :county, :state,
+                            :latitude, :longitude, :magnitude, :row_hash, :created_at, :updated_at
+                        ) ON CONFLICT (row_hash) DO NOTHING
+                    """)
+                    
+                    result = self.db.execute(sql, values)
+                    batch_stored = result.rowcount
+                    stored_count += batch_stored
+                    
+                    # Count by type
+                    for report in batch:
+                        if report['report_type'] == 'tornado':
+                            tornado_count += 1
+                        elif report['report_type'] == 'wind':
+                            wind_count += 1
+                        elif report['report_type'] == 'hail':
+                            hail_count += 1
+                    
+                    self.db.commit()
+                    logger.info(f"Batch {(i//batch_size)+1}: inserted {batch_stored}/{len(batch)} reports")
+            
+            logger.info(f"Bulk insert complete: {stored_count} total reports stored")
+            
+            return {
+                'tornado': tornado_count,
+                'wind': wind_count, 
+                'hail': hail_count,
+                'total': stored_count
+            }
+            
+        except Exception as e:
+            self.db.rollback()
+            logger.error(f"Error in bulk insert: {e}")
+            raise
+
+    def get_ingestion_stats(self) -> Dict:
+        """Get SPC ingestion statistics"""
+        return {
+            'total_reports': self.db.query(SPCReport).count(),
+            'last_ingestion': self.db.query(SPCIngestionLog).order_by(SPCIngestionLog.started_at.desc()).first(),
+            'successful_ingestions': self.db.query(SPCIngestionLog).filter(SPCIngestionLog.success == True).count(),
+            'failed_ingestions': self.db.query(SPCIngestionLog).filter(SPCIngestionLog.success == False).count()
+        }
