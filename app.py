@@ -1229,6 +1229,54 @@ def get_autonomous_scheduler_status():
         logger.error(f"Failed to get scheduler status: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@app.route('/internal/enrich-all-priority', methods=['POST'])
+def enrich_all_priority_database():
+    """Internal endpoint to enrich all existing priority alerts in the database"""
+    try:
+        logger.info("Starting comprehensive priority alert enrichment for entire database")
+        
+        # Get count of priority alerts that need enrichment
+        priority_unenriched = Alert.query.filter(
+            Alert.ai_summary.is_(None),
+            Alert.event.in_(enrich_service.AUTO_ENRICH_ALERTS)
+        ).count()
+        
+        if priority_unenriched == 0:
+            return jsonify({
+                'success': True,
+                'message': 'All priority alerts are already enriched',
+                'enriched': 0,
+                'failed': 0,
+                'total_processed': 0
+            })
+        
+        logger.info(f"Found {priority_unenriched} priority alerts requiring enrichment")
+        
+        # Run the enrichment process
+        result = enrich_service.enrich_all_priority_alerts()
+        
+        if 'error' in result:
+            return jsonify({
+                'success': False,
+                'error': result['error']
+            }), 500
+        
+        return jsonify({
+            'success': True,
+            'message': f"Successfully enriched {result['enriched']} priority alerts from database",
+            'enriched': result['enriched'],
+            'failed': result['failed'],
+            'total_processed': result['total_processed'],
+            'priority_types': list(enrich_service.AUTO_ENRICH_ALERTS)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error during comprehensive priority enrichment: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 @app.route('/internal/spc-verify-today')
 def spc_verify_today():
     """Get recent SPC verification data for dashboard"""
