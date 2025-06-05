@@ -175,15 +175,16 @@ class SPCReport(db.Model):
     
     # Tracking fields
     raw_csv_line = Column(Text)  # Store original CSV line for audit
+    row_hash = Column(String(64), unique=True)  # SHA256 hash for strict duplicate detection
     ingested_at = Column(DateTime, server_default=func.now())
     
     __table_args__ = (
         Index('idx_spc_date_type', 'report_date', 'report_type'),
         Index('idx_spc_location', 'state', 'county'),
         Index('idx_spc_coords', 'latitude', 'longitude'),
-        # Allow multiple reports with same CSV line - they can be legitimate separate events
-        # Only prevent exact duplicates when all key fields match including ingestion timestamp
         Index('idx_spc_duplicate_detection', 'report_date', 'report_type', 'time_utc', 'location', 'county', 'state'),
+        # Hash-based duplicate prevention - safer than raw CSV line comparison
+        UniqueConstraint('row_hash', name='uq_spc_report_hash'),
     )
 
     def __repr__(self):
