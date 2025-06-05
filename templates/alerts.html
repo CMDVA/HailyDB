@@ -29,7 +29,7 @@
         <div class="card">
             <div class="card-body">
                 <form method="GET" class="row g-3">
-                    <div class="col-md-3">
+                    <div class="col-md-6 col-lg-3">
                         <label for="severity" class="form-label">Severity</label>
                         <select class="form-select" id="severity" name="severity">
                             <option value="">All Severities</option>
@@ -39,10 +39,27 @@
                             <option value="Minor" {{ 'selected' if request.args.get('severity') == 'Minor' }}>Minor</option>
                         </select>
                     </div>
-                    <div class="col-md-3">
-                        <label for="event" class="form-label">Event Type</label>
+                    <div class="col-md-6 col-lg-3">
+                        <label for="category" class="form-label">Alert Category</label>
+                        <select class="form-select" id="category" name="category">
+                            <option value="">All Categories</option>
+                            <option value="Severe Weather Alert" {{ 'selected' if request.args.get('category') == 'Severe Weather Alert' }}>Severe Weather Alert</option>
+                            <option value="Winter Weather Alert" {{ 'selected' if request.args.get('category') == 'Winter Weather Alert' }}>Winter Weather Alert</option>
+                            <option value="Flood Alert" {{ 'selected' if request.args.get('category') == 'Flood Alert' }}>Flood Alert</option>
+                            <option value="Coastal Alert" {{ 'selected' if request.args.get('category') == 'Coastal Alert' }}>Coastal Alert</option>
+                            <option value="Wind & Fog Alert" {{ 'selected' if request.args.get('category') == 'Wind & Fog Alert' }}>Wind & Fog Alert</option>
+                            <option value="Fire Weather Alert" {{ 'selected' if request.args.get('category') == 'Fire Weather Alert' }}>Fire Weather Alert</option>
+                            <option value="Air Quality & Dust Alert" {{ 'selected' if request.args.get('category') == 'Air Quality & Dust Alert' }}>Air Quality & Dust Alert</option>
+                            <option value="Marine Alert" {{ 'selected' if request.args.get('category') == 'Marine Alert' }}>Marine Alert</option>
+                            <option value="Tropical Weather Alert" {{ 'selected' if request.args.get('category') == 'Tropical Weather Alert' }}>Tropical Weather Alert</option>
+                            <option value="Tsunami Alert" {{ 'selected' if request.args.get('category') == 'Tsunami Alert' }}>Tsunami Alert</option>
+                            <option value="General Weather Info" {{ 'selected' if request.args.get('category') == 'General Weather Info' }}>General Weather Info</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 col-lg-3">
+                        <label for="event" class="form-label">Alert Type</label>
                         <select class="form-select" id="event" name="event">
-                            <option value="">All Event Types</option>
+                            <option value="">All Alert Types</option>
                             <optgroup label="Severe Weather Alert">
                                 <option value="Tornado Watch" {{ 'selected' if request.args.get('event') == 'Tornado Watch' }}>Tornado Watch</option>
                                 <option value="Tornado Warning" {{ 'selected' if request.args.get('event') == 'Tornado Warning' }}>Tornado Warning</option>
@@ -135,7 +152,7 @@
                             </optgroup>
                         </select>
                     </div>
-                    <div class="col-md-3">
+                    <div class="col-md-6 col-lg-3">
                         <label for="per_page" class="form-label">Per Page</label>
                         <select class="form-select" id="per_page" name="per_page">
                             <option value="25" {{ 'selected' if request.args.get('per_page', '50') == '25' }}>25</option>
@@ -143,11 +160,10 @@
                             <option value="100" {{ 'selected' if request.args.get('per_page', '50') == '100' }}>100</option>
                         </select>
                     </div>
-                    <div class="col-md-3">
-                        <label class="form-label">&nbsp;</label>
-                        <div class="d-grid">
+                    <div class="col-12">
+                        <div class="d-grid d-md-flex justify-content-md-end">
                             <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-filter me-1"></i>Filter
+                                <i class="fas fa-filter me-1"></i>Filter Alerts
                             </button>
                         </div>
                     </div>

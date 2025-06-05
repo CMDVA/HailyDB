@@ -85,11 +85,63 @@ def get_alerts():
     per_page = request.args.get('per_page', 50, type=int)
     severity = request.args.get('severity')
     event = request.args.get('event')
+    category = request.args.get('category')
     state = request.args.get('state')
     county = request.args.get('county')
     area = request.args.get('area')
     effective_date = request.args.get('effective_date')
     active_only = request.args.get('active_only', 'false').lower() == 'true'
+    
+    # Category mapping - maps category names to their corresponding alert types
+    category_mapping = {
+        'Severe Weather Alert': [
+            'Tornado Watch', 'Tornado Warning', 'Severe Thunderstorm Watch', 
+            'Severe Thunderstorm Warning', 'Severe Weather Statement', 
+            'Extreme Wind Warning', 'Snow Squall Warning'
+        ],
+        'Winter Weather Alert': [
+            'Winter Storm Watch', 'Winter Storm Warning', 'Blizzard Warning',
+            'Ice Storm Warning', 'Winter Weather Advisory', 'Freezing Rain Advisory',
+            'Wind Chill Advisory', 'Wind Chill Warning', 'Frost Advisory', 'Freeze Warning'
+        ],
+        'Flood Alert': [
+            'Flood Watch', 'Flood Warning', 'Flash Flood Watch', 
+            'Flash Flood Warning', 'Flood Advisory'
+        ],
+        'Coastal Alert': [
+            'Coastal Flood Watch', 'Coastal Flood Warning', 'Coastal Flood Advisory',
+            'Lakeshore Flood Watch', 'Lakeshore Flood Warning', 'Lakeshore Flood Advisory',
+            'Beach Hazards Statement'
+        ],
+        'Wind & Fog Alert': [
+            'High Wind Watch', 'High Wind Warning', 'Wind Advisory',
+            'Dense Fog Advisory', 'Freezing Fog Advisory'
+        ],
+        'Fire Weather Alert': [
+            'Fire Weather Watch', 'Red Flag Warning'
+        ],
+        'Air Quality & Dust Alert': [
+            'Air Quality Alert', 'Air Stagnation Advisory', 'Blowing Dust Advisory',
+            'Dust Storm Warning', 'Ashfall Advisory', 'Ashfall Warning'
+        ],
+        'Marine Alert': [
+            'Small Craft Advisory', 'Gale Watch', 'Gale Warning', 'Storm Watch',
+            'Storm Warning', 'Hurricane Force Wind Warning', 'Special Marine Warning',
+            'Low Water Advisory', 'Brisk Wind Advisory', 'Marine Weather Statement',
+            'Hazardous Seas Warning'
+        ],
+        'Tropical Weather Alert': [
+            'Tropical Storm Watch', 'Tropical Storm Warning', 'Hurricane Watch',
+            'Hurricane Warning', 'Storm Surge Watch', 'Storm Surge Warning'
+        ],
+        'Tsunami Alert': [
+            'Tsunami Watch', 'Tsunami Advisory', 'Tsunami Warning'
+        ],
+        'General Weather Info': [
+            'Special Weather Statement', 'Hazardous Weather Outlook', 'Short Term Forecast',
+            'Public Information Statement', 'Administrative Message', 'Test Message'
+        ]
+    }
     
     query = Alert.query.order_by(Alert.effective.desc())
     
@@ -97,6 +149,9 @@ def get_alerts():
         query = query.filter(Alert.severity == severity)
     if event:
         query = query.filter(Alert.event.ilike(f'%{event}%'))
+    if category and category in category_mapping:
+        # Filter by alert types in the selected category
+        query = query.filter(Alert.event.in_(category_mapping[category]))
     if state:
         query = query.filter(Alert.area_desc.ilike(f'%{state}%'))
     if county:
