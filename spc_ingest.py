@@ -690,8 +690,20 @@ class SPCIngestService:
             
             # Generate hash for duplicate detection including report_type
             # This ensures tornado and wind reports at same location/time are treated as separate
-            hash_data = f"{report['report_date']}|{report['report_type']}|{report['time_utc']}|{report['location']}|{report['county']}|{report['state']}|{report.get('latitude', '')}|{report.get('longitude', '')}|{report['magnitude']}"
-            report['row_hash'] = hashlib.sha256(hash_data.encode('utf-8')).hexdigest()
+            # Normalize empty values to ensure consistent hashing
+            lat_str = str(report.get('latitude', '')) if report.get('latitude') is not None else ''
+            lon_str = str(report.get('longitude', '')) if report.get('longitude') is not None else ''
+            mag_str = str(report['magnitude']) if report['magnitude'] else '{}'
+            
+            hash_data = f"{report['report_date']}|{report['report_type']}|{report['time_utc']}|{report['location']}|{report['county']}|{report['state']}|{lat_str}|{lon_str}|{mag_str}"
+            
+            # Clean the hash data to remove any problematic characters
+            clean_hash_data = hash_data.replace('\x00', '').replace('\r', '').replace('\n', ' ')
+            report['row_hash'] = hashlib.sha256(clean_hash_data.encode('utf-8')).hexdigest()
+            
+            # Debug: log hash data for troubleshooting
+            if report['report_type'] == 'tornado' and len(report.get('location', '')) > 0:
+                logger.debug(f"Hash data for tornado: {clean_hash_data[:100]}... -> {report['row_hash'][:16]}...")
             
             return report
             
