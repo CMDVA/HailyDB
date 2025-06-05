@@ -13,6 +13,70 @@ class EnrichmentService:
     Provides summarization and tag classification using OpenAI
     """
     
+    # High-priority alert types for automatic enrichment
+    AUTO_ENRICH_ALERTS = {
+        # Severe Weather Alert category
+        'Tornado Watch', 'Tornado Warning', 'Severe Thunderstorm Watch', 
+        'Severe Thunderstorm Warning', 'Severe Weather Statement', 
+        'Extreme Wind Warning', 'Snow Squall Warning',
+        # Tropical Weather Alert category
+        'Tropical Storm Watch', 'Tropical Storm Warning', 'Hurricane Watch',
+        'Hurricane Warning', 'Storm Surge Watch', 'Storm Surge Warning',
+        # Specific high wind alerts
+        'High Wind Watch', 'High Wind Warning'
+    }
+    
+    # Category mapping for batch processing
+    CATEGORY_MAPPING = {
+        'Severe Weather Alert': [
+            'Tornado Watch', 'Tornado Warning', 'Severe Thunderstorm Watch', 
+            'Severe Thunderstorm Warning', 'Severe Weather Statement', 
+            'Extreme Wind Warning', 'Snow Squall Warning'
+        ],
+        'Winter Weather Alert': [
+            'Winter Storm Watch', 'Winter Storm Warning', 'Blizzard Warning',
+            'Ice Storm Warning', 'Winter Weather Advisory', 'Freezing Rain Advisory',
+            'Wind Chill Advisory', 'Wind Chill Warning', 'Frost Advisory', 'Freeze Warning'
+        ],
+        'Flood Alert': [
+            'Flood Watch', 'Flood Warning', 'Flash Flood Watch', 
+            'Flash Flood Warning', 'Flood Advisory'
+        ],
+        'Coastal Alert': [
+            'Coastal Flood Watch', 'Coastal Flood Warning', 'Coastal Flood Advisory',
+            'Lakeshore Flood Watch', 'Lakeshore Flood Warning', 'Lakeshore Flood Advisory',
+            'Beach Hazards Statement'
+        ],
+        'Wind & Fog Alert': [
+            'High Wind Watch', 'High Wind Warning', 'Wind Advisory',
+            'Dense Fog Advisory', 'Freezing Fog Advisory'
+        ],
+        'Fire Weather Alert': [
+            'Fire Weather Watch', 'Red Flag Warning'
+        ],
+        'Air Quality & Dust Alert': [
+            'Air Quality Alert', 'Air Stagnation Advisory', 'Blowing Dust Advisory',
+            'Dust Storm Warning', 'Ashfall Advisory', 'Ashfall Warning'
+        ],
+        'Marine Alert': [
+            'Small Craft Advisory', 'Gale Watch', 'Gale Warning', 'Storm Watch',
+            'Storm Warning', 'Hurricane Force Wind Warning', 'Special Marine Warning',
+            'Low Water Advisory', 'Brisk Wind Advisory', 'Marine Weather Statement',
+            'Hazardous Seas Warning'
+        ],
+        'Tropical Weather Alert': [
+            'Tropical Storm Watch', 'Tropical Storm Warning', 'Hurricane Watch',
+            'Hurricane Warning', 'Storm Surge Watch', 'Storm Surge Warning'
+        ],
+        'Tsunami Alert': [
+            'Tsunami Watch', 'Tsunami Advisory', 'Tsunami Warning'
+        ],
+        'General Weather Info': [
+            'Special Weather Statement', 'Hazardous Weather Outlook', 'Short Term Forecast',
+            'Public Information Statement', 'Administrative Message', 'Test Message'
+        ]
+    }
+    
     def __init__(self, db):
         self.db = db
         self.openai_client = OpenAI(
@@ -186,6 +250,133 @@ class EnrichmentService:
             logger.error(f"Error during batch enrichment: {e}")
             return {'enriched': 0, 'failed': 0, 'total_processed': 0}
     
+    def enrich_by_category(self, category: str, limit: int = 100) -> Dict[str, int]:
+        """
+        Enrich alerts by category with timeout protection
+        Returns statistics about the enrichment process
+        """
+        try:
+            if category not in self.CATEGORY_MAPPING:
+                logger.error(f"Unknown category: {category}")
+                return {'error': f'Unknown category: {category}'}
+            
+            # Get unenriched alerts for the specified category
+            alert_types = self.CATEGORY_MAPPING[category]
+            alerts = Alert.query.filter(
+                Alert.ai_summary.is_(None),
+                Alert.event.in_(alert_types)
+            ).limit(limit).all()
+            
+            enriched_count = 0
+            failed_count = 0
+            
+            logger.info(f"Starting category enrichment for '{category}': {len(alerts)} alerts to process")
+            
+            # Process in smaller batches to prevent timeouts
+            batch_size = 10
+            for i in range(0, len(alerts), batch_size):
+                batch = alerts[i:i + batch_size]
+                
+                for alert in batch:
+                    try:
+                        if self.enrich_alert(alert):
+                            enriched_count += 1
+                        else:
+                            failed_count += 1
+                    except Exception as e:
+                        logger.error(f"Error enriching alert {alert.id}: {e}")
+                        failed_count += 1
+                
+                # Commit after each batch
+                try:
+                    self.db.session.commit()
+                    logger.info(f"Category '{category}' batch {i//batch_size + 1}: {enriched_count} enriched so far")
+                except Exception as e:
+                    logger.error(f"Error committing batch: {e}")
+                    self.db.session.rollback()
+            
+            logger.info(f"Category enrichment complete for '{category}': {enriched_count} enriched, {failed_count} failed")
+            
+            return {
+                'category': category,
+                'enriched': enriched_count,
+                'failed': failed_count,
+                'total_processed': len(alerts)
+            }
+            
+        except Exception as e:
+            logger.error(f"Error during category enrichment for {category}: {e}")
+            self.db.session.rollback()
+            return {
+                'category': category,
+                'enriched': 0,
+                'failed': 0,
+                'total_processed': 0,
+                'error': str(e)
+            }
+    
+    def should_auto_enrich(self, alert: Alert) -> bool:
+        """Check if alert should be automatically enriched on ingestion"""
+        return alert.event in self.AUTO_ENRICH_ALERTS
+    
+    def enrich_all_priority_alerts(self) -> Dict[str, int]:
+        """
+        Enrich all high-priority alerts that haven't been enriched yet
+        Includes Severe Weather, Tropical Weather, and High Wind alerts
+        """
+        try:
+            # Get all unenriched alerts that match auto-enrich criteria
+            alerts = Alert.query.filter(
+                Alert.ai_summary.is_(None),
+                Alert.event.in_(self.AUTO_ENRICH_ALERTS)
+            ).all()
+            
+            total_enriched = 0
+            total_failed = 0
+            
+            logger.info(f"Starting priority alert enrichment: {len(alerts)} alerts to process")
+            
+            # Process in batches to prevent timeouts
+            batch_size = 10
+            for i in range(0, len(alerts), batch_size):
+                batch = alerts[i:i + batch_size]
+                
+                for alert in batch:
+                    try:
+                        if self.enrich_alert(alert):
+                            total_enriched += 1
+                        else:
+                            total_failed += 1
+                    except Exception as e:
+                        logger.error(f"Error enriching priority alert {alert.id}: {e}")
+                        total_failed += 1
+                
+                # Commit after each batch
+                try:
+                    self.db.session.commit()
+                    logger.info(f"Priority batch {i//batch_size + 1}: {total_enriched} enriched so far")
+                except Exception as e:
+                    logger.error(f"Error committing priority batch: {e}")
+                    self.db.session.rollback()
+            
+            logger.info(f"Priority alert enrichment complete: {total_enriched} enriched, {total_failed} failed")
+            
+            return {
+                'enriched': total_enriched,
+                'failed': total_failed,
+                'total_processed': len(alerts)
+            }
+            
+        except Exception as e:
+            logger.error(f"Error during priority alert enrichment: {e}")
+            self.db.session.rollback()
+            return {
+                'enriched': 0,
+                'failed': 0,
+                'total_processed': 0,
+                'error': str(e)
+            }
+    
     def get_enrichment_stats(self) -> Dict:
         """Get enrichment statistics"""
         try:
@@ -193,11 +384,21 @@ class EnrichmentService:
             enriched_alerts = Alert.query.filter(Alert.ai_summary.isnot(None)).count()
             tagged_alerts = Alert.query.filter(Alert.ai_tags.isnot(None)).count()
             
+            # Get priority alert stats
+            priority_total = Alert.query.filter(Alert.event.in_(self.AUTO_ENRICH_ALERTS)).count()
+            priority_enriched = Alert.query.filter(
+                Alert.event.in_(self.AUTO_ENRICH_ALERTS),
+                Alert.ai_summary.isnot(None)
+            ).count()
+            
             return {
                 'total_alerts': total_alerts,
                 'enriched_alerts': enriched_alerts,
                 'tagged_alerts': tagged_alerts,
-                'enrichment_rate': enriched_alerts / total_alerts if total_alerts > 0 else 0
+                'enrichment_rate': round((enriched_alerts / total_alerts * 100), 2) if total_alerts > 0 else 0,
+                'priority_alerts_total': priority_total,
+                'priority_alerts_enriched': priority_enriched,
+                'priority_enrichment_rate': round((priority_enriched / priority_total * 100), 2) if priority_total > 0 else 0
             }
             
         except Exception as e:
@@ -206,5 +407,8 @@ class EnrichmentService:
                 'total_alerts': 0,
                 'enriched_alerts': 0,
                 'tagged_alerts': 0,
-                'enrichment_rate': 0
+                'enrichment_rate': 0,
+                'priority_alerts_total': 0,
+                'priority_alerts_enriched': 0,
+                'priority_enrichment_rate': 0
             }

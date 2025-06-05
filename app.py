@@ -445,6 +445,95 @@ def enrich_batch():
             'message': str(e)
         }), 500
 
+@app.route('/api/alerts/enrich-by-category', methods=['POST'])
+def enrich_by_category():
+    """Enrich alerts by category with timeout protection"""
+    try:
+        data = request.get_json()
+        category = data.get('category') if data else None
+        limit = data.get('limit', 100) if data else 100
+        
+        if not category:
+            return jsonify({
+                'status': 'error',
+                'message': 'Category is required'
+            }), 400
+        
+        # Validate category
+        valid_categories = list(enrich_service.CATEGORY_MAPPING.keys())
+        if category not in valid_categories:
+            return jsonify({
+                'status': 'error',
+                'message': f'Invalid category. Valid options: {valid_categories}'
+            }), 400
+        
+        logger.info(f"Starting category enrichment for '{category}' with limit {limit}")
+        
+        result = enrich_service.enrich_by_category(category, min(limit, 200))
+        
+        if 'error' in result:
+            return jsonify({
+                'status': 'error',
+                'message': result['error']
+            }), 400
+        
+        return jsonify({
+            'status': 'success',
+            'category': result['category'],
+            'enriched': result['enriched'],
+            'failed': result['failed'],
+            'total_processed': result['total_processed'],
+            'message': f"Successfully enriched {result['enriched']} '{category}' alerts"
+        })
+        
+    except Exception as e:
+        logger.error(f"Error during category enrichment: {e}")
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+@app.route('/api/alerts/enrich-priority', methods=['POST'])
+def enrich_priority_alerts():
+    """Enrich all high-priority alerts (Severe Weather, Tropical Weather, High Wind)"""
+    try:
+        logger.info("Starting priority alert enrichment")
+        
+        result = enrich_service.enrich_all_priority_alerts()
+        
+        if 'error' in result:
+            return jsonify({
+                'status': 'error',
+                'message': result['error']
+            }), 500
+        
+        return jsonify({
+            'status': 'success',
+            'enriched': result['enriched'],
+            'failed': result['failed'],
+            'total_processed': result['total_processed'],
+            'message': f"Successfully enriched {result['enriched']} priority alerts"
+        })
+        
+    except Exception as e:
+        logger.error(f"Error during priority enrichment: {e}")
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+@app.route('/api/alerts/enrichment-stats')
+def get_enrichment_stats():
+    """Get enrichment statistics including priority alert coverage"""
+    try:
+        stats = enrich_service.get_enrichment_stats()
+        return jsonify(stats)
+    except Exception as e:
+        logger.error(f"Error getting enrichment stats: {e}")
+        return jsonify({
+            'error': str(e)
+        }), 500
+
 @app.route('/api/spc/reports')
 def get_spc_reports():
     """Get SPC storm reports with filtering"""
