@@ -534,6 +534,42 @@ def get_enrichment_stats():
             'error': str(e)
         }), 500
 
+@app.route('/api/alerts/unenriched-counts')
+def get_unenriched_counts():
+    """Get counts of unenriched alerts by category"""
+    try:
+        from enrich import EnrichmentService
+        
+        # Priority alerts (auto-enrich categories)
+        priority_count = Alert.query.filter(
+            Alert.ai_summary.is_(None),
+            Alert.event.in_(EnrichmentService.AUTO_ENRICH_ALERTS)
+        ).count()
+        
+        # Category counts
+        category_counts = {}
+        for category, events in EnrichmentService.CATEGORY_MAPPING.items():
+            count = Alert.query.filter(
+                Alert.ai_summary.is_(None),
+                Alert.event.in_(events)
+            ).count()
+            category_counts[category] = count
+        
+        # General batch count (all unenriched)
+        total_unenriched = Alert.query.filter(Alert.ai_summary.is_(None)).count()
+        
+        return jsonify({
+            'priority_alerts': priority_count,
+            'categories': category_counts,
+            'total_unenriched': total_unenriched
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting unenriched counts: {e}")
+        return jsonify({
+            'error': str(e)
+        }), 500
+
 @app.route('/api/spc/reports')
 def get_spc_reports():
     """Get SPC storm reports with filtering"""
