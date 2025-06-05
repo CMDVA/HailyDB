@@ -591,5 +591,10 @@ async function getEnrichmentStats() {
         showNotification('Error getting enrichment stats', 'error');
     }
 }
+
+// Load enrichment counts when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    loadEnrichmentCounts();
+});
 </script>
 {% endblock %}
