@@ -229,54 +229,52 @@
         
         function updateMatchesTable(matches) {
             const tbody = document.getElementById('matches-tbody');
+            const matchCount = document.getElementById('match-count');
+            
+            // Update match count
+            matchCount.textContent = `${matches.length} matches found`;
             
             if (matches.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">No verified matches found</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">No verified matches found</td></tr>';
                 return;
             }
             
             tbody.innerHTML = matches.map(match => {
-                const confidenceClass = match.confidence >= 0.8 ? 'match-high' : 
-                                      match.confidence >= 0.5 ? 'match-medium' : 'match-low';
+                const confidenceClass = match.confidence >= 0.8 ? 'bg-success' : 
+                                      match.confidence >= 0.5 ? 'bg-warning' : 'bg-danger';
                 
-                const spcReportsHtml = match.spc_reports.map(report => 
-                    `<div class="spc-report">
-                        <strong>${report.report_type.toUpperCase()}</strong> ${report.time_utc}<br>
-                        <small>${report.location}, ${report.county} ${report.state}</small>
-                    </div>`
-                ).join('');
+                const spcReportsHtml = match.spc_reports && match.spc_reports.length > 0 ? 
+                    match.spc_reports.map(report => 
+                        `<div class="badge bg-light text-dark mb-1 d-block">
+                            <strong>${report.report_type.toUpperCase()}</strong> ${report.time_utc}<br>
+                            <small>${report.location}, ${report.county} ${report.state}</small>
+                        </div>`
+                    ).join('') : '<span class="text-muted">No reports</span>';
                 
                 return `
                     <tr>
-                        <td class="col-time">${formatTimestamp(match.effective)}</td>
-                        <td class="col-event"><span class="alert-event">${match.event}</span></td>
-                        <td class="col-location location-cell">${match.area_desc}</td>
-                        <td class="col-method text-center">
-                            <span class="badge bg-secondary">${match.match_method.toUpperCase()}</span>
-                        </td>
-                        <td class="col-confidence text-center">
-                            <span class="match-confidence ${confidenceClass}">
-                                ${(match.confidence * 100).toFixed(0)}%
-                            </span>
-                        </td>
-                        <td class="col-reports text-center">${match.report_count}</td>
-                        <td class="col-ai-summary ai-summary-cell">
-                            ${match.spc_ai_summary ? match.spc_ai_summary : '<span class="text-muted">No AI summary</span>'
+                        <td><small>${formatTimestamp(match.effective)}</small></td>
+                        <td><span class="badge bg-danger">${match.event}</span></td>
+                        <td><small>${match.area_desc}</small></td>
+                        <td><span class="badge bg-secondary">${match.match_method.toUpperCase()}</span></td>
+                        <td><span class="badge ${confidenceClass}">${(match.confidence * 100).toFixed(0)}%</span></td>
+                        <td>${match.report_count || 0}</td>
+                        <td>
+                            ${match.spc_ai_summary ? 
+                                `<div class="text-muted small" style="max-width: 300px;">${match.spc_ai_summary}</div>` : 
+                                '<span class="text-muted">No summary available</span>'
                             }
                         </td>
-                        <td class="col-actions">
-                            <div class="action-buttons">
-                                <a href="/alerts/${match.id}" class="btn btn-sm btn-outline-primary" target="_blank" title="View Alert">
+                        <td>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <button class="btn btn-outline-primary" onclick="window.open('/alert/${match.id}', '_blank')" title="View Alert Details">
                                     <i class="fas fa-eye"></i>
-                                </a>
-                                ${match.spc_ai_summary ? 
-                                    `<button class="btn btn-sm btn-outline-success" onclick="generateSingleAISummary('${match.id}')" title="Regenerate AI Summary">
-                                        <i class="fas fa-sync"></i>
-                                    </button>` :
-                                    `<button class="btn btn-sm btn-success" onclick="generateSingleAISummary('${match.id}')" title="Generate AI Summary">
-                                        <i class="fas fa-robot"></i>
-                                    </button>`
-                                }
+                                </button>
+                                <button class="btn ${match.spc_ai_summary ? 'btn-outline-success' : 'btn-outline-warning'}" 
+                                        onclick="generateSingleAISummary('${match.id}', this)" 
+                                        title="${match.spc_ai_summary ? 'Regenerate AI Summary' : 'Generate AI Summary'}">
+                                    <i class="fas fa-${match.spc_ai_summary ? 'sync' : 'robot'}"></i>
+                                </button>
                             </div>
                         </td>
                     </tr>
