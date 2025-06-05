@@ -1,0 +1,68 @@
+[
+  {
+    "date": "2025-03-15",
+    "csv_counts": {
+      "tornado": 74,
+      "wind": 152,
+      "hail": 21,
+      "total": 247
+    },
+    "db_counts": {
+      "tornado": 74,
+      "wind": 146,
+      "hail": 21,
+      "total": 241
+    },
+    "discrepancies": {
+      "tornado": 0,
+      "wind": 6,
+      "hail": 0,
+      "total": 6
+    },
+    "status": "DATA_LOSS"
+  },
+  {
+    "date": "2024-05-17",
+    "csv_counts": {
+      "tornado": 7,
+      "wind": 80,
+      "hail": 15,
+      "total": 102
+    },
+    "db_counts": {
+      "tornado": 7,
+      "wind": 39,
+      "hail": 0,
+      "total": 46
+    },
+    "discrepancies": {
+      "tornado": 0,
+      "wind": 41,
+      "hail": 15,
+      "total": 56
+    },
+    "status": "DATA_LOSS"
+  },
+  {
+    "date": "2025-04-15",
+    "csv_counts": {
+      "tornado": 0,
+      "wind": 28,
+      "hail": 0,
+      "total": 28
+    },
+    "db_counts": {
+      "tornado": 0,
+      "wind": 28,
+      "hail": 0,
+      "total": 28
+    },
+    "discrepancies": {
+      "tornado": 0,
+      "wind": 0,
+      "hail": 0,
+      "total": 0
+    },
+    "status": "CLEAN"
+  }
+]
