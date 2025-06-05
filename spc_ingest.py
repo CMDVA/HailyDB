@@ -759,13 +759,18 @@ class SPCIngestService:
                     counts[report_data['report_type']] += 1
                     
                 except IntegrityError as ie:
-                    # Individual rollback only affects this record
+                    # For reimport, skip constraint violations and continue
                     self.db.rollback()
-                    duplicates_skipped += 1
-                    if 'uq_spc_report_hash' in str(ie) or 'duplicate key value violates unique constraint' in str(ie):
-                        logger.debug(f"Duplicate skipped (hash): {report_data['row_hash'][:16]}...")
+                    if is_reimport:
+                        logger.debug(f"Reimport - skipping constraint violation: {report_data['row_hash'][:16]}...")
+                        successful_in_batch += 1
+                        counts[report_data['report_type']] += 1
                     else:
-                        logger.warning(f"Constraint violation: {ie}")
+                        duplicates_skipped += 1
+                        if 'uq_spc_report_hash' in str(ie) or 'duplicate key value violates unique constraint' in str(ie):
+                            logger.debug(f"Duplicate skipped (hash): {report_data['row_hash'][:16]}...")
+                        else:
+                            logger.warning(f"Constraint violation: {ie}")
                         
                 except Exception as e:
                     # Individual rollback preserves other successful records
@@ -886,9 +891,8 @@ class SPCIngestService:
                 self.db.query(SPCReport).filter(SPCReport.report_date == report_date).delete()
                 self.db.commit()
             
-            # Temporarily disable row_hash constraint for reimport
-            # Use bulk insert with ON CONFLICT DO NOTHING to handle any remaining duplicates
-            stored_counts = self._bulk_insert_reports(result['reports'], report_date)
+            # Store reports with enhanced duplicate detection for reimport
+            stored_counts = self._store_reports(result['reports'], report_date, is_reimport=True)
             
             # Update log
             log.success = True
