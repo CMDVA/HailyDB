@@ -6,6 +6,7 @@ Handles parsing of multi-section CSV files and cross-referencing with NWS alerts
 import csv
 import logging
 import requests
+import hashlib
 from datetime import datetime, date, timedelta
 from typing import Dict, List, Optional, Tuple
 from io import StringIO
@@ -687,6 +688,11 @@ class SPCIngestService:
                 else:
                     report['magnitude'] = {}
             
+            # Generate hash for duplicate detection including report_type
+            # This ensures tornado and wind reports at same location/time are treated as separate
+            hash_data = f"{report['report_date']}|{report['report_type']}|{report['time_utc']}|{report['location']}|{report['county']}|{report['state']}|{report.get('latitude', '')}|{report.get('longitude', '')}|{report['magnitude']}"
+            report['row_hash'] = hashlib.sha256(hash_data.encode('utf-8')).hexdigest()
+            
             return report
             
         except Exception as e:
@@ -730,6 +736,7 @@ class SPCIngestService:
                     report.comments = report_data['comments']
                     report.magnitude = magnitude_data
                     report.raw_csv_line = report_data['raw_csv_line']
+                    report.row_hash = report_data['row_hash']
                     
                     # Add and flush individual record
                     self.db.add(report)
